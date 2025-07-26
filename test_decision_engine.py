@@ -138,6 +138,20 @@ def main():
         print(f"現在価格: ¥{package.current_price.current_price:,.0f}")
         print(f"前日比: {package.current_price.price_change:+.1f} ({package.current_price.price_change_percent:+.2f}%)")
         
+        # 市場環境データの表示
+        if package.market_context:
+            print("\n=== 市場環境 ===")
+            print(f"日経225: {package.market_context.indices['nikkei225'].price:,.0f} ({package.market_context.indices['nikkei225'].change_percent:+.2f}%)")
+            print(f"TOPIX: {package.market_context.indices['topix'].price:,.0f} ({package.market_context.indices['topix'].change_percent:+.2f}%)")
+            print(f"USD/JPY: {package.market_context.forex['usdjpy'].price:.2f} ({package.market_context.forex['usdjpy'].change_percent:+.2f}%)")
+            print(f"セクター: {package.market_context.sector['name']} ({package.market_context.sector['performance']:+.2f}%)")
+        
+        if package.market_status:
+            print(f"\n=== 市場状態 ===")
+            print(f"セッション: {package.market_status.session}")
+            print(f"次のイベント: {package.market_status.next_event} (あと{package.market_status.time_to_next_event//60:.0f}分)")
+            print(f"地合い: {package.market_status.market_sentiment['direction']} (強度: {package.market_status.market_sentiment['strength']:.2f})")
+        
         # JSON出力
         output_dir = Path("output")
         output_dir.mkdir(exist_ok=True)

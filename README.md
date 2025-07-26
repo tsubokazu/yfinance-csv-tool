@@ -17,6 +17,12 @@ yfinanceライブラリを使用した包括的な株価データ取得・分析
 - **JSON形式**での構造化データ出力
 - AI判断システム向けデータパッケージ対応
 
+### 3. ⚡ 複数銘柄バッチ処理機能（NEW）
+- **複数銘柄の並列処理**で高速データ生成
+- **市場環境データ**付きの総合分析
+- **CSV・JSON形式**でのサマリー出力
+- バックテスト・スクリーニング用途に最適
+
 ## インストール
 
 ```bash
@@ -71,6 +77,43 @@ python test_decision_engine.py --symbol 7203.T --datetime "2025-07-25 14:30"
 
 # 米国株の例
 python test_decision_engine.py --symbol AAPL --datetime "2025-07-25 09:30"
+```
+
+### 3. ⚡ 複数銘柄バッチ処理
+
+#### サンプルファイル作成
+
+```bash
+# サンプル銘柄リストファイルを作成
+python batch_decision_engine.py --create-sample
+```
+
+#### バッチ処理実行
+
+```bash
+# 銘柄リストファイルから一括処理
+python batch_decision_engine.py --symbols-file sample_symbols.txt
+
+# 銘柄を直接指定
+python batch_decision_engine.py --symbols 7203.T 6723.T 9984.T
+
+# 並列処理数を指定（デフォルト3）
+python batch_decision_engine.py --symbols-file sample_symbols.txt --workers 5
+
+# 特定時刻でのバッチ処理
+python batch_decision_engine.py --symbols-file sample_symbols.txt --datetime "2025-07-25 14:30"
+```
+
+#### バッチ処理出力
+
+**個別JSONファイル**: 各銘柄の詳細判断データ
+**サマリーCSV**: 全銘柄の主要指標をまとめたスプレッドシート
+**バッチ結果JSON**: 処理結果の統計情報
+
+```csv
+symbol,company_name,current_price,price_change,price_change_percent,volume_ratio,ma20_1d,ma50_1d,atr14,vwap_60m
+7203.T,トヨタ自動車,2775.5,-69.0,-2.43,0.006,2545.7,2586.09,72.7,2670.8
+6723.T,ルネサスエレクトロニクス,1834.0,-83.0,-4.33,0.009,1871.1,1857.78,79.9,1882.6
 ```
 
 #### 生成されるデータ
@@ -169,15 +212,18 @@ yfinanceライブラリが対応するすべての銘柄に対応しています
 yfinance-csv-tool/
 ├── main.py                    # CSV出力メインスクリプト
 ├── config.py                  # 設定管理
-├── technical_indicators.py    # テクニカル指標計算エンジン
+├── technical_indicators.py   # テクニカル指標計算エンジン
 ├── data_models.py            # データ構造定義
 ├── minute_decision_engine.py # バックテスト用データ生成エンジン
-├── test_decision_engine.py   # テスト用スクリプト
+├── market_data_engine.py     # 市場環境データ取得エンジン
+├── test_decision_engine.py   # 単一銘柄テストスクリプト
+├── batch_decision_engine.py  # 複数銘柄バッチ処理スクリプト
 ├── requirements.txt          # 依存関係
+├── sample_symbols.txt        # サンプル銘柄リスト
 ├── README.md                 # このファイル
 ├── CLAUDE.md                 # Claude向け開発履歴
 ├── data/                     # CSV出力先
-├── output/                   # JSON出力先
+├── output/                   # JSON出力先（個別・サマリー）
 ├── cache/                    # データキャッシュ
 └── logs/                     # ログファイル
 ```
@@ -197,6 +243,19 @@ yfinance-csv-tool/
 - **ボリンジャーバンド**: 20期間±2σ
 - **ATR**: 14期間平均真の値幅
 - **出来高プロファイル**: POC, Value Area
+
+### 市場環境データ
+- **日本指数**: 日経225, TOPIX, マザーズ
+- **米国指数**: S&P500, NASDAQ, Dow
+- **先物**: 日経225先物, E-mini S&P500
+- **為替**: USD/JPY, EUR/JPY, GBP/JPY
+- **セクター分析**: 日本主要6セクター
+- **市場状態**: セッション判定, 地合い分析
+
+### 並列処理機能
+- **ThreadPoolExecutor**: 複数銘柄並列処理
+- **エラー処理**: 個別銘柄失敗時の継続処理
+- **進捗管理**: リアルタイム処理状況表示
 
 ## ⚠️ 注意事項
 

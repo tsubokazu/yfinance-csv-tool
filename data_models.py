@@ -115,6 +115,7 @@ class MarketStatus:
     session: str  # PRE_MARKET | MORNING | LUNCH_BREAK | AFTERNOON | AFTER_HOURS
     time_to_next_event: int
     next_event: str
+    market_sentiment: Dict[str, any]  # 地合い判定情報
 
 @dataclass
 class MinuteDecisionPackage:

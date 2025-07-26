@@ -6,15 +6,19 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import logging
 from pathlib import Path
+import concurrent.futures
+import time
 
 from technical_indicators import TechnicalIndicators
+from market_data_engine import MarketDataEngine
 from data_models import (
     MinuteDecisionPackage, CurrentPriceData, TimeframeIndicators,
     WeeklyIndicators, DailyIndicators, HourlyIndicators, MinuteIndicators,
     MovingAverageData, VWAPData, BollingerBandData, VolumeProfileData,
+    MarketContext, MarketStatus,
     TIMEFRAME_CONFIG
 )
 
@@ -25,6 +29,7 @@ class MinuteDecisionEngine:
     
     def __init__(self, cache_dir: str = "cache"):
         self.tech_indicators = TechnicalIndicators()
+        self.market_engine = MarketDataEngine()
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
         
@@ -55,12 +60,18 @@ class MinuteDecisionEngine:
             # テクニカル指標を計算
             technical_indicators = self._calculate_all_indicators(timeframe_data, timestamp)
             
+            # 市場環境データを取得
+            market_context = self.market_engine.get_market_context(timestamp)
+            market_status = self.market_engine.get_market_status(timestamp)
+            
             # データパッケージを作成
             package = MinuteDecisionPackage(
                 timestamp=timestamp,
                 symbol=symbol,
                 current_price=current_price,
-                technical_indicators=technical_indicators
+                technical_indicators=technical_indicators,
+                market_context=market_context,
+                market_status=market_status
             )
             
             logger.info(f"判断データ生成完了: {symbol}")
@@ -69,6 +80,106 @@ class MinuteDecisionEngine:
         except Exception as e:
             logger.error(f"判断データ生成エラー: {symbol} - {str(e)}")
             raise
+    
+    def get_multiple_decisions(self, symbols: List[str], timestamp: datetime, 
+                             max_workers: int = 3) -> Dict[str, Optional[MinuteDecisionPackage]]:
+        """
+        複数銘柄の判断データを並列取得
+        
+        Args:
+            symbols: 銘柄コードリスト
+            timestamp: 判断時刻
+            max_workers: 最大並列処理数
+        
+        Returns:
+            Dict[str, MinuteDecisionPackage]: 銘柄別判断データ
+        """
+        logger.info(f"複数銘柄データ生成開始: {len(symbols)}銘柄")
+        start_time = time.time()
+        
+        results = {}
+        
+        # 並列処理で複数銘柄を処理
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 各銘柄の処理を並列実行
+            future_to_symbol = {
+                executor.submit(self._safe_get_decision_data, symbol, timestamp): symbol 
+                for symbol in symbols
+            }
+            
+            for future in concurrent.futures.as_completed(future_to_symbol):
+                symbol = future_to_symbol[future]
+                try:
+                    result = future.result()
+                    results[symbol] = result
+                    if result:
+                        logger.info(f"処理完了: {symbol}")
+                    else:
+                        logger.warning(f"処理失敗: {symbol}")
+                except Exception as e:
+                    logger.error(f"処理エラー: {symbol} - {str(e)}")
+                    results[symbol] = None
+        
+        elapsed_time = time.time() - start_time
+        success_count = sum(1 for r in results.values() if r is not None)
+        
+        logger.info(f"複数銘柄データ生成完了: {success_count}/{len(symbols)}銘柄 ({elapsed_time:.1f}秒)")
+        
+        return results
+    
+    def _safe_get_decision_data(self, symbol: str, timestamp: datetime) -> Optional[MinuteDecisionPackage]:
+        """
+        安全な判断データ取得（エラー処理付き）
+        
+        Args:
+            symbol: 銘柄コード
+            timestamp: 判断時刻
+        
+        Returns:
+            MinuteDecisionPackage or None: 判断データ（エラー時はNone）
+        """
+        try:
+            return self.get_minute_decision_data(symbol, timestamp)
+        except Exception as e:
+            logger.error(f"安全処理エラー: {symbol} - {str(e)}")
+            return None
+    
+    def save_multiple_results(self, results: Dict[str, Optional[MinuteDecisionPackage]], 
+                            output_dir: str = "output") -> List[str]:
+        """
+        複数銘柄の結果をファイル保存
+        
+        Args:
+            results: 複数銘柄の判断データ
+            output_dir: 出力ディレクトリ
+        
+        Returns:
+            List[str]: 保存されたファイルパスのリスト
+        """
+        output_path = Path(output_dir)
+        output_path.mkdir(exist_ok=True)
+        
+        saved_files = []
+        
+        for symbol, package in results.items():
+            if package is None:
+                logger.warning(f"データなしのためスキップ: {symbol}")
+                continue
+            
+            try:
+                filename = f"decision_data_{symbol}_{package.timestamp.strftime('%Y%m%d_%H%M%S')}.json"
+                filepath = output_path / filename
+                
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(package.to_json())
+                
+                saved_files.append(str(filepath))
+                logger.info(f"ファイル保存完了: {filepath}")
+                
+            except Exception as e:
+                logger.error(f"ファイル保存エラー: {symbol} - {str(e)}")
+        
+        return saved_files
     
     def _get_all_timeframe_data(self, symbol: str, timestamp: datetime) -> Dict[str, pd.DataFrame]:
         """全時間軸のデータを取得"""
