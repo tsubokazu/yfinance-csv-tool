@@ -1,0 +1,84 @@
+{
+  "symbol": "6723.T",
+  "start_datetime": "2025-07-25T14:00:00",
+  "end_datetime": "2025-07-25T14:10:00",
+  "interval_minutes": 2,
+  "total_datapoints": 6,
+  "successful_datapoints": 6,
+  "failed_datapoints": 0,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "timestamp": "2025-07-25T14:00:00",
+      "symbol": "6723.T",
+      "current_price": 1803.5,
+      "price_change_percent": -5.920709441836203,
+      "volume_ratio": 0.0031266756170041784,
+      "ma20_daily": 1871.125,
+      "ma50_daily": 1857.78,
+      "atr14_daily": 79.85714285714286,
+      "vwap_60m": 1882.2761054077903,
+      "chart_images": {}
+    },
+    {
+      "timestamp": "2025-07-25T14:02:00",
+      "symbol": "6723.T",
+      "current_price": 1806.0,
+      "price_change_percent": -5.790297339593114,
+      "volume_ratio": 0.0019884559844982716,
+      "ma20_daily": 1871.125,
+      "ma50_daily": 1857.78,
+      "atr14_daily": 79.85714285714286,
+      "vwap_60m": 1882.2761054077903,
+      "chart_images": {}
+    },
+    {
+      "timestamp": "2025-07-25T14:04:00",
+      "symbol": "6723.T",
+      "current_price": 1807.5,
+      "price_change_percent": -5.712050078247262,
+      "volume_ratio": 0.0023861471813979257,
+      "ma20_daily": 1871.125,
+      "ma50_daily": 1857.78,
+      "atr14_daily": 79.85714285714286,
+      "vwap_60m": 1882.2761054077903,
+      "chart_images": {}
+    },
+    {
+      "timestamp": "2025-07-25T14:06:00",
+      "symbol": "6723.T",
+      "current_price": 1808.0,
+      "price_change_percent": -5.685967657798644,
+      "volume_ratio": 0.0019747424949500074,
+      "ma20_daily": 1871.125,
+      "ma50_daily": 1857.78,
+      "atr14_daily": 79.85714285714286,
+      "vwap_60m": 1882.2761054077903,
+      "chart_images": {}
+    },
+    {
+      "timestamp": "2025-07-25T14:08:00",
+      "symbol": "6723.T",
+      "current_price": 1809.0,
+      "price_change_percent": -5.633802816901409,
+      "volume_ratio": 0.001604478277146881,
+      "ma20_daily": 1871.125,
+      "ma50_daily": 1857.78,
+      "atr14_daily": 79.85714285714286,
+      "vwap_60m": 1882.2761054077903,
+      "chart_images": {}
+    },
+    {
+      "timestamp": "2025-07-25T14:10:00",
+      "symbol": "6723.T",
+      "current_price": 1808.5,
+      "price_change_percent": -5.659885237350027,
+      "volume_ratio": 0.001865034578563896,
+      "ma20_daily": 1871.125,
+      "ma50_daily": 1857.78,
+      "atr14_daily": 79.85714285714286,
+      "vwap_60m": 1882.2761054077903,
+      "chart_images": {}
+    }
+  ]
+}

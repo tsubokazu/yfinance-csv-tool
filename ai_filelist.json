@@ -1,0 +1,361 @@
+{
+  "metadata": {
+    "generated_at": "2025-07-26T15:09:12.665495",
+    "symbol": "6723.T",
+    "backtest_period": "2025-07-25T14:25:00 to 2025-07-25T14:30:00",
+    "total_datapoints": 6,
+    "successful_datapoints": 6,
+    "success_rate": 100.0
+  },
+  "data_files": {
+    "summary_json": "backtest_results/backtest_summary_6723.T_20250725_142500.json",
+    "csv_data": "backtest_results/backtest_data_6723.T_20250725_142500.csv",
+    "detail_files": []
+  },
+  "chart_images": {
+    "weekly": [
+      {
+        "timestamp": "2025-07-25T14:25:00",
+        "path": "charts/chart_6723.T_weekly_20250725_142500.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:26:00",
+        "path": "charts/chart_6723.T_weekly_20250725_142600.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:27:00",
+        "path": "charts/chart_6723.T_weekly_20250725_142700.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:28:00",
+        "path": "charts/chart_6723.T_weekly_20250725_142800.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:29:00",
+        "path": "charts/chart_6723.T_weekly_20250725_142900.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:30:00",
+        "path": "charts/chart_6723.T_weekly_20250725_143000.png",
+        "exists": true
+      }
+    ],
+    "daily": [
+      {
+        "timestamp": "2025-07-25T14:25:00",
+        "path": "charts/chart_6723.T_daily_20250725_142500.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:26:00",
+        "path": "charts/chart_6723.T_daily_20250725_142600.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:27:00",
+        "path": "charts/chart_6723.T_daily_20250725_142700.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:28:00",
+        "path": "charts/chart_6723.T_daily_20250725_142800.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:29:00",
+        "path": "charts/chart_6723.T_daily_20250725_142900.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:30:00",
+        "path": "charts/chart_6723.T_daily_20250725_143000.png",
+        "exists": true
+      }
+    ],
+    "hourly_60": [
+      {
+        "timestamp": "2025-07-25T14:25:00",
+        "path": "charts/chart_6723.T_hourly_60_20250725_142500.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:26:00",
+        "path": "charts/chart_6723.T_hourly_60_20250725_142600.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:27:00",
+        "path": "charts/chart_6723.T_hourly_60_20250725_142700.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:28:00",
+        "path": "charts/chart_6723.T_hourly_60_20250725_142800.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:29:00",
+        "path": "charts/chart_6723.T_hourly_60_20250725_142900.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:30:00",
+        "path": "charts/chart_6723.T_hourly_60_20250725_143000.png",
+        "exists": true
+      }
+    ],
+    "minute_15": [
+      {
+        "timestamp": "2025-07-25T14:25:00",
+        "path": "charts/chart_6723.T_minute_15_20250725_142500.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:26:00",
+        "path": "charts/chart_6723.T_minute_15_20250725_142600.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:27:00",
+        "path": "charts/chart_6723.T_minute_15_20250725_142700.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:28:00",
+        "path": "charts/chart_6723.T_minute_15_20250725_142800.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:29:00",
+        "path": "charts/chart_6723.T_minute_15_20250725_142900.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:30:00",
+        "path": "charts/chart_6723.T_minute_15_20250725_143000.png",
+        "exists": true
+      }
+    ],
+    "minute_5": [
+      {
+        "timestamp": "2025-07-25T14:25:00",
+        "path": "charts/chart_6723.T_minute_5_20250725_142500.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:26:00",
+        "path": "charts/chart_6723.T_minute_5_20250725_142600.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:27:00",
+        "path": "charts/chart_6723.T_minute_5_20250725_142700.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:28:00",
+        "path": "charts/chart_6723.T_minute_5_20250725_142800.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:29:00",
+        "path": "charts/chart_6723.T_minute_5_20250725_142900.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:30:00",
+        "path": "charts/chart_6723.T_minute_5_20250725_143000.png",
+        "exists": true
+      }
+    ],
+    "minute_1": [
+      {
+        "timestamp": "2025-07-25T14:25:00",
+        "path": "charts/chart_6723.T_minute_1_20250725_142500.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:26:00",
+        "path": "charts/chart_6723.T_minute_1_20250725_142600.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:27:00",
+        "path": "charts/chart_6723.T_minute_1_20250725_142700.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:28:00",
+        "path": "charts/chart_6723.T_minute_1_20250725_142800.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:29:00",
+        "path": "charts/chart_6723.T_minute_1_20250725_142900.png",
+        "exists": true
+      },
+      {
+        "timestamp": "2025-07-25T14:30:00",
+        "path": "charts/chart_6723.T_minute_1_20250725_143000.png",
+        "exists": true
+      }
+    ]
+  },
+  "trading_decisions": [
+    {
+      "timestamp": "2025-07-25T14:25:00",
+      "datapoint_index": 1,
+      "price_data": {
+        "current_price": 1819.5,
+        "price_change_percent": -5.086071987480438,
+        "volume_ratio": 0.0014399164025677138
+      },
+      "technical_indicators": {
+        "ma20_daily": 1871.125,
+        "ma50_daily": 1857.78,
+        "atr14_daily": 79.85714285714286,
+        "vwap_60m": 1882.2761054077903
+      },
+      "chart_images": {
+        "weekly": "charts/chart_6723.T_weekly_20250725_142500.png",
+        "daily": "charts/chart_6723.T_daily_20250725_142500.png",
+        "hourly_60": "charts/chart_6723.T_hourly_60_20250725_142500.png",
+        "minute_15": "charts/chart_6723.T_minute_15_20250725_142500.png",
+        "minute_5": "charts/chart_6723.T_minute_5_20250725_142500.png",
+        "minute_1": "charts/chart_6723.T_minute_1_20250725_142500.png"
+      },
+      "ai_decision": null,
+      "trading_action": null
+    },
+    {
+      "timestamp": "2025-07-25T14:26:00",
+      "datapoint_index": 2,
+      "price_data": {
+        "current_price": 1821.5,
+        "price_change_percent": -4.981742305685968,
+        "volume_ratio": 0.003750639391450188
+      },
+      "technical_indicators": {
+        "ma20_daily": 1871.125,
+        "ma50_daily": 1857.78,
+        "atr14_daily": 79.85714285714286,
+        "vwap_60m": 1882.2761054077903
+      },
+      "chart_images": {
+        "weekly": "charts/chart_6723.T_weekly_20250725_142600.png",
+        "daily": "charts/chart_6723.T_daily_20250725_142600.png",
+        "hourly_60": "charts/chart_6723.T_hourly_60_20250725_142600.png",
+        "minute_15": "charts/chart_6723.T_minute_15_20250725_142600.png",
+        "minute_5": "charts/chart_6723.T_minute_5_20250725_142600.png",
+        "minute_1": "charts/chart_6723.T_minute_1_20250725_142600.png"
+      },
+      "ai_decision": null,
+      "trading_action": null
+    },
+    {
+      "timestamp": "2025-07-25T14:27:00",
+      "datapoint_index": 3,
+      "price_data": {
+        "current_price": 1822.0,
+        "price_change_percent": -4.95565988523735,
+        "volume_ratio": 0.0026947006962338644
+      },
+      "technical_indicators": {
+        "ma20_daily": 1871.125,
+        "ma50_daily": 1857.78,
+        "atr14_daily": 79.85714285714286,
+        "vwap_60m": 1882.2761054077903
+      },
+      "chart_images": {
+        "weekly": "charts/chart_6723.T_weekly_20250725_142700.png",
+        "daily": "charts/chart_6723.T_daily_20250725_142700.png",
+        "hourly_60": "charts/chart_6723.T_hourly_60_20250725_142700.png",
+        "minute_15": "charts/chart_6723.T_minute_15_20250725_142700.png",
+        "minute_5": "charts/chart_6723.T_minute_5_20250725_142700.png",
+        "minute_1": "charts/chart_6723.T_minute_1_20250725_142700.png"
+      },
+      "ai_decision": null,
+      "trading_action": null
+    },
+    {
+      "timestamp": "2025-07-25T14:28:00",
+      "datapoint_index": 4,
+      "price_data": {
+        "current_price": 1823.0,
+        "price_change_percent": -4.903495044340115,
+        "volume_ratio": 0.0028524058260388997
+      },
+      "technical_indicators": {
+        "ma20_daily": 1871.125,
+        "ma50_daily": 1857.78,
+        "atr14_daily": 79.85714285714286,
+        "vwap_60m": 1882.2761054077903
+      },
+      "chart_images": {
+        "weekly": "charts/chart_6723.T_weekly_20250725_142800.png",
+        "daily": "charts/chart_6723.T_daily_20250725_142800.png",
+        "hourly_60": "charts/chart_6723.T_hourly_60_20250725_142800.png",
+        "minute_15": "charts/chart_6723.T_minute_15_20250725_142800.png",
+        "minute_5": "charts/chart_6723.T_minute_5_20250725_142800.png",
+        "minute_1": "charts/chart_6723.T_minute_1_20250725_142800.png"
+      },
+      "ai_decision": null,
+      "trading_action": null
+    },
+    {
+      "timestamp": "2025-07-25T14:29:00",
+      "datapoint_index": 5,
+      "price_data": {
+        "current_price": 1825.0,
+        "price_change_percent": -4.7991653625456445,
+        "volume_ratio": 0.008193810005087704
+      },
+      "technical_indicators": {
+        "ma20_daily": 1871.125,
+        "ma50_daily": 1857.78,
+        "atr14_daily": 79.85714285714286,
+        "vwap_60m": 1882.2761054077903
+      },
+      "chart_images": {
+        "weekly": "charts/chart_6723.T_weekly_20250725_142900.png",
+        "daily": "charts/chart_6723.T_daily_20250725_142900.png",
+        "hourly_60": "charts/chart_6723.T_hourly_60_20250725_142900.png",
+        "minute_15": "charts/chart_6723.T_minute_15_20250725_142900.png",
+        "minute_5": "charts/chart_6723.T_minute_5_20250725_142900.png",
+        "minute_1": "charts/chart_6723.T_minute_1_20250725_142900.png"
+      },
+      "ai_decision": null,
+      "trading_action": null
+    },
+    {
+      "timestamp": "2025-07-25T14:30:00",
+      "datapoint_index": 6,
+      "price_data": {
+        "current_price": 1821.5,
+        "price_change_percent": -4.981742305685968,
+        "volume_ratio": 0.0033392347050022696
+      },
+      "technical_indicators": {
+        "ma20_daily": 1871.125,
+        "ma50_daily": 1857.78,
+        "atr14_daily": 79.85714285714286,
+        "vwap_60m": 1882.2761054077903
+      },
+      "chart_images": {
+        "weekly": "charts/chart_6723.T_weekly_20250725_143000.png",
+        "daily": "charts/chart_6723.T_daily_20250725_143000.png",
+        "hourly_60": "charts/chart_6723.T_hourly_60_20250725_143000.png",
+        "minute_15": "charts/chart_6723.T_minute_15_20250725_143000.png",
+        "minute_5": "charts/chart_6723.T_minute_5_20250725_143000.png",
+        "minute_1": "charts/chart_6723.T_minute_1_20250725_143000.png"
+      },
+      "ai_decision": null,
+      "trading_action": null
+    }
+  ]
+}

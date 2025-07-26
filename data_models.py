@@ -118,12 +118,47 @@ class MarketStatus:
     market_sentiment: Dict[str, any]  # 地合い判定情報
 
 @dataclass
+class ChartImageData:
+    """チャート画像データ"""
+    imagePath: str
+    timeRange: str
+    lastUpdate: datetime
+
+@dataclass 
+class ChartImages:
+    """6つの時間軸チャート画像"""
+    weekly: Optional[ChartImageData] = None
+    daily: Optional[ChartImageData] = None
+    hourly_60: Optional[ChartImageData] = None  # 内部的には "60min" として扱う
+    minute_15: Optional[ChartImageData] = None  # 内部的には "15min" として扱う
+    minute_5: Optional[ChartImageData] = None   # 内部的には "5min" として扱う
+    minute_1: Optional[ChartImageData] = None   # 内部的には "1min" として扱う
+    
+    def __init__(self, **kwargs):
+        # TypeScript仕様の "60min", "15min", "5min", "1min" キーを
+        # Python仕様の "hourly_60", "minute_15", "minute_5", "minute_1" に変換
+        mapping = {
+            '60min': 'hourly_60',
+            '15min': 'minute_15', 
+            '5min': 'minute_5',
+            '1min': 'minute_1'
+        }
+        
+        for key, value in kwargs.items():
+            python_key = mapping.get(key, key)
+            if isinstance(value, dict):
+                setattr(self, python_key, ChartImageData(**value))
+            else:
+                setattr(self, python_key, value)
+
+@dataclass
 class MinuteDecisionPackage:
     """毎分判断用データパッケージ"""
     timestamp: datetime
     symbol: str
     current_price: CurrentPriceData
     technical_indicators: TimeframeIndicators
+    chart_images: Optional[ChartImages] = None
     market_context: Optional[MarketContext] = None
     market_status: Optional[MarketStatus] = None
     

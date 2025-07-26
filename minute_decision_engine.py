@@ -18,7 +18,7 @@ from data_models import (
     MinuteDecisionPackage, CurrentPriceData, TimeframeIndicators,
     WeeklyIndicators, DailyIndicators, HourlyIndicators, MinuteIndicators,
     MovingAverageData, VWAPData, BollingerBandData, VolumeProfileData,
-    MarketContext, MarketStatus,
+    MarketContext, MarketStatus, ChartImages,
     TIMEFRAME_CONFIG
 )
 
@@ -27,11 +27,34 @@ logger = logging.getLogger(__name__)
 class MinuteDecisionEngine:
     """毎分判断データ生成エンジン"""
     
-    def __init__(self, cache_dir: str = "cache"):
+    def __init__(self, cache_dir: str = "cache", enable_chart_generation: bool = False, 
+                 use_simple_charts: bool = True):
         self.tech_indicators = TechnicalIndicators()
         self.market_engine = MarketDataEngine()
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
+        
+        # チャート生成エンジン（オプション）
+        self.enable_chart_generation = enable_chart_generation
+        self.use_simple_charts = use_simple_charts
+        self.chart_generator = None
+        
+        if enable_chart_generation:
+            try:
+                if use_simple_charts:
+                    from simple_chart_generator import SimpleChartGenerator
+                    self.chart_generator = SimpleChartGenerator()
+                    print("✅ 軽量チャート生成エンジンを初期化しました")
+                else:
+                    from chart_generator import ChartImageGenerator
+                    self.chart_generator = ChartImageGenerator()
+                    print("✅ TradingViewチャート生成エンジンを初期化しました")
+            except ImportError as e:
+                print(f"⚠️  チャート生成ライブラリのインポートエラー: {e}")
+                self.enable_chart_generation = False
+            except Exception as e:
+                print(f"⚠️  チャート生成エンジンの初期化エラー: {e}")
+                self.enable_chart_generation = False
         
         # データキャッシュ
         self._data_cache = {}
@@ -64,12 +87,31 @@ class MinuteDecisionEngine:
             market_context = self.market_engine.get_market_context(timestamp)
             market_status = self.market_engine.get_market_status(timestamp)
             
+            # チャート画像を生成（オプション）
+            chart_images = None
+            if self.enable_chart_generation and self.chart_generator:
+                try:
+                    print("📊 チャート画像を生成中...")
+                    # テクニカル指標の生データを準備
+                    indicators_data = self._prepare_indicators_for_chart(timeframe_data, technical_indicators)
+                    chart_images = self.chart_generator.generate_all_timeframe_charts(
+                        symbol=symbol,
+                        timestamp=timestamp,
+                        price_data=timeframe_data,
+                        indicators_data=indicators_data
+                    )
+                    print("✅ チャート画像生成完了")
+                except Exception as e:
+                    print(f"❌ チャート画像生成エラー: {e}")
+                    chart_images = None
+            
             # データパッケージを作成
             package = MinuteDecisionPackage(
                 timestamp=timestamp,
                 symbol=symbol,
                 current_price=current_price,
                 technical_indicators=technical_indicators,
+                chart_images=chart_images,
                 market_context=market_context,
                 market_status=market_status
             )
@@ -518,3 +560,128 @@ class MinuteDecisionEngine:
             moving_averages=moving_averages,
             vwap=vwap
         )
+    
+    def _prepare_indicators_for_chart(self, timeframe_data: Dict[str, pd.DataFrame], 
+                                    technical_indicators: TimeframeIndicators) -> Dict[str, Dict]:
+        """
+        チャート生成用のテクニカル指標データを準備
+        
+        Args:
+            timeframe_data: 各時間軸の価格データ
+            technical_indicators: 計算済みテクニカル指標
+            
+        Returns:
+            Dict[str, Dict]: 各時間軸のチャート用指標データ
+        """
+        indicators_data = {}
+        
+        for timeframe, data in timeframe_data.items():
+            if data.empty:
+                continue
+                
+            try:
+                indicators = {}
+                config = TIMEFRAME_CONFIG[timeframe]
+                
+                # 移動平均線の生データを取得
+                ma_periods = config.get('ma_periods', [])
+                if ma_periods:
+                    ma_data = self.tech_indicators.calculate_moving_averages(data, ma_periods)
+                    indicators['moving_averages'] = ma_data
+                
+                # VWAP（該当時間軸のみ）
+                if 'vwap' in config.get('indicators', []):
+                    vwap_data = self.tech_indicators.calculate_vwap(data)
+                    indicators['vwap'] = vwap_data
+                
+                # ボリンジャーバンド（60分足のみ）
+                if timeframe == 'hourly_60' and 'bollinger_bands' in config.get('indicators', []):
+                    bb_data = self.tech_indicators.calculate_bollinger_bands(data, 20, 2)
+                    indicators['bollinger_bands'] = bb_data
+                
+                indicators_data[timeframe] = indicators
+                
+            except Exception as e:
+                logger.warning(f"チャート用指標データ準備エラー: {timeframe} - {str(e)}")
+                indicators_data[timeframe] = {}
+        
+        return indicators_data
+    
+    def get_backtest_decision_data(self, symbol: str, target_datetime: datetime) -> MinuteDecisionPackage:
+        """
+        バックテスト用判断データ生成（指定時刻でのスナップショット）
+        
+        Args:
+            symbol: 銘柄コード
+            target_datetime: 対象時刻
+            
+        Returns:
+            MinuteDecisionPackage: バックテスト用判断データ
+        """
+        logger.info(f"バックテスト判断データ生成開始: {symbol} at {target_datetime}")
+        
+        try:
+            # 各時間軸のデータを取得
+            timeframe_data = self._get_all_timeframe_data(symbol, target_datetime)
+            
+            # 現在価格データを生成
+            current_price = self._generate_current_price_data(symbol, target_datetime, timeframe_data)
+            
+            # テクニカル指標を計算
+            technical_indicators = self._calculate_all_indicators(timeframe_data, target_datetime)
+            
+            # 市場環境データを取得
+            market_context = self.market_engine.get_market_context(target_datetime)
+            market_status = self.market_engine.get_market_status(target_datetime)
+            
+            # バックテスト用チャート画像を生成（オプション）
+            chart_images = None
+            if self.enable_chart_generation and self.chart_generator:
+                try:
+                    print("📊 バックテスト用チャート画像を生成中...")
+                    # テクニカル指標の生データを準備
+                    indicators_data = self._prepare_indicators_for_chart(timeframe_data, technical_indicators)
+                    
+                    if hasattr(self.chart_generator, 'generate_backtest_chart'):
+                        # SimpleChartGeneratorの場合
+                        chart_images = self.chart_generator.generate_backtest_chart(
+                            symbol=symbol,
+                            target_datetime=target_datetime,
+                            price_data=timeframe_data,
+                            indicators_data=indicators_data
+                        )
+                    else:
+                        # 通常のチャート生成の場合
+                        chart_images = self.chart_generator.generate_all_timeframe_charts(
+                            symbol=symbol,
+                            timestamp=target_datetime,
+                            price_data=timeframe_data,
+                            indicators_data=indicators_data
+                        )
+                    print("✅ バックテスト用チャート画像生成完了")
+                except Exception as e:
+                    print(f"❌ バックテスト用チャート画像生成エラー: {e}")
+                    chart_images = None
+            
+            # データパッケージを作成
+            package = MinuteDecisionPackage(
+                timestamp=target_datetime,
+                symbol=symbol,
+                current_price=current_price,
+                technical_indicators=technical_indicators,
+                chart_images=chart_images,
+                market_context=market_context,
+                market_status=market_status
+            )
+            
+            logger.info(f"バックテスト判断データ生成完了: {symbol}")
+            return package
+            
+        except Exception as e:
+            logger.error(f"バックテスト判断データ生成エラー: {symbol} - {str(e)}")
+            raise
+    
+    def close(self):
+        """リソースのクリーンアップ"""
+        if self.chart_generator:
+            self.chart_generator.close()
