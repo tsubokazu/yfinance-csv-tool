@@ -1,6 +1,6 @@
-# 🚀 yfinance AI トレーディング分析ツール
+# 🚀 yfinance AI トレーディング分析プラットフォーム
 
-**革新的効率化システム搭載** | OpenAI GPT-4o + LangGraph + 次世代最適化
+**革新的効率化システム搭載** | FastAPI + OpenAI GPT-4o + LangGraph + 次世代最適化
 
 ## 🎯 プロジェクト概要
 
@@ -96,7 +96,29 @@
 - **バックテスト対応**（指定時刻でのスナップショット）
 - **AI判断システム**向けの高品質チャート画像
 
+## 🌐 Web API（新機能）
+
+### FastAPI バックエンド
+
+高性能な非同期Web APIとして利用可能になりました：
+
+```bash
+# 開発サーバー起動
+cd backend
+make dev
+
+# Docker実行
+docker-compose up -d
+
+# APIドキュメント
+http://localhost:8000/docs
+```
+
+詳細は[backend/README.md](backend/README.md)を参照してください。
+
 ## インストール
+
+### CLI版（レガシー）
 
 ```bash
 # 基本機能
@@ -104,6 +126,13 @@ pip install -r requirements.txt
 
 # チャート生成機能（オプション）
 pip install matplotlib mplfinance
+```
+
+### Web API版（推奨）
+
+```bash
+cd backend
+pip install -r requirements.txt
 ```
 
 ## 使用方法
@@ -312,22 +341,32 @@ yfinanceライブラリが対応するすべての銘柄に対応しています
 
 ```
 yfinance-csv-tool/
-├── main.py                    # CSV出力メインスクリプト
-├── config.py                  # 設定管理
-├── technical_indicators.py   # テクニカル指標計算エンジン
-├── data_models.py            # データ構造定義
-├── minute_decision_engine.py # バックテスト用データ生成エンジン
-├── market_data_engine.py     # 市場環境データ取得エンジン
-├── test_decision_engine.py   # 単一銘柄テストスクリプト
-├── batch_decision_engine.py  # 複数銘柄バッチ処理スクリプト
-├── requirements.txt          # 依存関係
-├── sample_symbols.txt        # サンプル銘柄リスト
-├── README.md                 # このファイル
-├── CLAUDE.md                 # Claude向け開発履歴
-├── data/                     # CSV出力先
-├── output/                   # JSON出力先（個別・サマリー）
-├── cache/                    # データキャッシュ
-└── logs/                     # ログファイル
+├── backend/                  # FastAPI バックエンドAPI
+│   ├── app/                 # アプリケーションコード
+│   │   ├── api/            # APIエンドポイント
+│   │   ├── core/           # コア機能（設定、認証など）
+│   │   ├── models/         # Pydanticモデル
+│   │   ├── services/       # ビジネスロジック
+│   │   │   ├── ai/        # AI判断システム
+│   │   │   ├── efficiency/ # 効率化システム
+│   │   │   └── visualization/ # チャート生成
+│   │   └── main.py        # FastAPIエントリーポイント
+│   ├── tests/             # テストコード
+│   ├── requirements.txt   # 依存関係
+│   ├── Dockerfile        # Dockerイメージ定義
+│   └── README.md         # バックエンドドキュメント
+├── legacy/                  # レガシーCLIツール
+│   ├── main.py           # CSV出力メインスクリプト
+│   └── backtest_runner.py # 統合バックテストツール
+├── scripts/                # ユーティリティスクリプト
+├── data/                   # 生成データ
+├── docs/                   # ドキュメント
+│   └── CLAUDE.md         # Claude向け開発履歴
+├── docker-compose.yml      # Docker Compose設定
+├── Makefile               # 開発用コマンド
+├── .gitignore            # Git除外設定
+├── README.md             # このファイル
+└── REFACTORING_PLAN.md   # リファクタリング計画
 ```
 
 ## ⚙️ 技術仕様
