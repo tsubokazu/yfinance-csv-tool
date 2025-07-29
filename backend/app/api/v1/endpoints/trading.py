@@ -1,13 +1,14 @@
 """
 Trading related endpoints
 """
-from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, status
+from typing import Dict, Any, Optional
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from datetime import datetime
 from pydantic import BaseModel
 import logging
 
 from app.services.minute_decision_engine import MinuteDecisionEngine
+from app.core.auth import get_current_user, get_optional_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,9 +36,14 @@ class TradingDecisionResponse(BaseModel):
     volume: int
     market_data: Dict[str, Any]
     technical_indicators: Dict[str, Any]
+    user_authenticated: bool = False
 
 @router.post("/decision", response_model=TradingDecisionResponse)
-async def get_trading_decision(request: TradingDecisionRequest) -> TradingDecisionResponse:
+async def get_trading_decision(
+    request: TradingDecisionRequest,
+    http_request: Request,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+) -> TradingDecisionResponse:
     """
     Get comprehensive trading data for a symbol at specific timestamp
     
@@ -79,7 +85,8 @@ async def get_trading_decision(request: TradingDecisionRequest) -> TradingDecisi
             price_change_percent=result.current_price.price_change_percent,
             volume=result.current_price.current_volume,
             market_data=market_data,
-            technical_indicators=technical_data
+            technical_indicators=technical_data,
+            user_authenticated=current_user is not None
         )
         
     except Exception as e:
@@ -90,7 +97,11 @@ async def get_trading_decision(request: TradingDecisionRequest) -> TradingDecisi
         )
 
 @router.get("/symbols/{symbol}")
-async def get_symbol_info(symbol: str) -> Dict[str, Any]:
+async def get_symbol_info(
+    symbol: str,
+    request: Request,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+) -> Dict[str, Any]:
     """
     Get basic information about a trading symbol
     """
@@ -108,7 +119,8 @@ async def get_symbol_info(symbol: str) -> Dict[str, Any]:
             "price_change_percent": result.current_price.price_change_percent,
             "volume": result.current_price.current_volume,
             "status": "active",
-            "timestamp": result.timestamp
+            "timestamp": result.timestamp,
+            "user_authenticated": current_user is not None
         }
         
     except Exception as e:
@@ -116,4 +128,62 @@ async def get_symbol_info(symbol: str) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Symbol information not found: {symbol}"
+        )
+
+@router.post("/ai-decision")
+async def get_ai_trading_decision(
+    request: TradingDecisionRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get AI-powered trading decision (Premium feature - requires authentication)
+    """
+    try:
+        logger.info(f"AI判断要求開始: {request.symbol} @ {request.timestamp} (User: {current_user['email']})")
+        
+        # TODO: AI判断システム統合（次のフェーズで実装）
+        return {
+            "symbol": request.symbol,
+            "timestamp": request.timestamp,
+            "ai_decision": "HOLD",
+            "confidence": 0.75,
+            "reasoning": ["Technical analysis pending", "Market conditions unclear"],
+            "premium_feature": True,
+            "user_id": current_user["id"],
+            "message": "AI判断システム統合予定（次のフェーズで実装）"
+        }
+        
+    except Exception as e:
+        logger.error(f"AI判断エラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI trading decision failed: {str(e)}"
+        )
+
+@router.get("/user/portfolio")
+async def get_user_portfolio(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get user's trading portfolio (Premium feature - requires authentication)
+    """
+    try:
+        # TODO: ユーザーポートフォリオ実装
+        return {
+            "user_id": current_user["id"],
+            "portfolio": {
+                "positions": [],
+                "total_value": 0.0,
+                "daily_pnl": 0.0,
+                "total_pnl": 0.0
+            },
+            "premium_feature": True,
+            "message": "ポートフォリオ機能は今後実装予定"
+        }
+        
+    except Exception as e:
+        logger.error(f"ポートフォリオ取得エラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Portfolio retrieval failed: {str(e)}"
         )
