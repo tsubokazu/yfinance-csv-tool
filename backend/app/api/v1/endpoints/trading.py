@@ -3,7 +3,7 @@ Trading related endpoints
 """
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, status, Depends, Request
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 import logging
 
@@ -141,17 +141,43 @@ async def get_ai_trading_decision(
     try:
         logger.info(f"AI判断要求開始: {request.symbol} @ {request.timestamp} (User: {current_user['email']})")
         
-        # TODO: AI判断システム統合（次のフェーズで実装）
-        return {
-            "symbol": request.symbol,
-            "timestamp": request.timestamp,
-            "ai_decision": "HOLD",
-            "confidence": 0.75,
-            "reasoning": ["Technical analysis pending", "Market conditions unclear"],
-            "premium_feature": True,
-            "user_id": current_user["id"],
-            "message": "AI判断システム統合予定（次のフェーズで実装）"
-        }
+        # MinuteDecisionEngineでデータ取得
+        decision_package = trading_engine.get_minute_decision_data(request.symbol, request.timestamp)
+        
+        # AI判断システムを使用して分析実行
+        try:
+            from app.services.ai.ai_trading_decision import AITradingDecisionEngine
+            ai_engine = AITradingDecisionEngine()
+            ai_result = ai_engine.analyze_trading_decision(decision_package)
+            
+            return {
+                "symbol": request.symbol,
+                "timestamp": request.timestamp,
+                "ai_decision": ai_result.get("final_decision", "HOLD"),
+                "confidence": ai_result.get("confidence_level", 0.5),
+                "reasoning": ai_result.get("reasoning", []),
+                "risk_factors": ai_result.get("risk_factors", []),
+                "strategy_used": ai_result.get("strategy_used", "cautious_hold"),
+                "market_outlook": ai_result.get("market_outlook", {}),
+                "future_entry_conditions": ai_result.get("future_entry_conditions", {}),
+                "analysis_efficiency": ai_result.get("analysis_efficiency", "full_analysis"),
+                "processing_time": ai_result.get("processing_time", ""),
+                "premium_feature": True,
+                "user_id": current_user["id"]
+            }
+            
+        except ImportError as e:
+            logger.warning(f"AI判断システムが利用できません: {e}")
+            return {
+                "symbol": request.symbol,
+                "timestamp": request.timestamp,
+                "ai_decision": "HOLD",
+                "confidence": 0.5,
+                "reasoning": ["AI判断システムが一時的に利用できません"],
+                "premium_feature": True,
+                "user_id": current_user["id"],
+                "message": "AI判断システム初期化中（OpenAI APIキー確認が必要）"
+            }
         
     except Exception as e:
         logger.error(f"AI判断エラー: {str(e)}")
@@ -186,4 +212,94 @@ async def get_user_portfolio(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Portfolio retrieval failed: {str(e)}"
+        )
+
+class BacktestRequest(BaseModel):
+    """
+    Request model for backtest execution
+    """
+    symbol: str
+    start_time: datetime
+    end_time: datetime
+    interval_minutes: int = 5
+    max_decisions: int = 20
+
+@router.post("/ai-backtest")
+async def run_ai_backtest(
+    request: BacktestRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Run AI-powered backtest over specified time period (Premium feature - requires authentication)
+    """
+    try:
+        logger.info(f"AI バックテスト開始: {request.symbol} {request.start_time} - {request.end_time} (User: {current_user['email']})")
+        
+        # AI判断エンジンの初期化
+        from app.services.ai.ai_trading_decision import AITradingDecisionEngine
+        ai_engine = AITradingDecisionEngine()
+        
+        # 時系列でのAI判断実行
+        current_time = request.start_time
+        decisions = []
+        decision_count = 0
+        
+        while current_time <= request.end_time and decision_count < request.max_decisions:
+            try:
+                # データ取得とAI判断
+                decision_package = trading_engine.get_minute_decision_data(request.symbol, current_time)
+                ai_result = ai_engine.analyze_trading_decision(decision_package)
+                
+                # 結果を記録
+                decisions.append({
+                    "timestamp": current_time.isoformat(),
+                    "price": decision_package.current_price.current_price,
+                    "ai_decision": ai_result.get("final_decision", "HOLD"),
+                    "confidence": ai_result.get("confidence_level", 0.5),
+                    "reasoning": ai_result.get("reasoning", [])[:2],  # 最初の2つの理由のみ
+                    "analysis_efficiency": ai_result.get("analysis_efficiency", "full_analysis")
+                })
+                
+                decision_count += 1
+                current_time += timedelta(minutes=request.interval_minutes)
+                
+                # プログレス情報
+                if decision_count % 5 == 0:
+                    logger.info(f"バックテスト進捗: {decision_count}/{request.max_decisions}")
+                
+            except Exception as e:
+                logger.warning(f"時刻 {current_time} でのAI判断失敗: {e}")
+                current_time += timedelta(minutes=request.interval_minutes)
+                continue
+        
+        # 統計情報の計算
+        buy_count = sum(1 for d in decisions if d["ai_decision"] == "BUY")
+        sell_count = sum(1 for d in decisions if d["ai_decision"] == "SELL")
+        hold_count = sum(1 for d in decisions if d["ai_decision"] == "HOLD")
+        avg_confidence = sum(d["confidence"] for d in decisions) / len(decisions) if decisions else 0
+        
+        return {
+            "symbol": request.symbol,
+            "backtest_period": {
+                "start": request.start_time.isoformat(),
+                "end": request.end_time.isoformat(),
+                "interval_minutes": request.interval_minutes
+            },
+            "statistics": {
+                "total_decisions": len(decisions),
+                "buy_signals": buy_count,
+                "sell_signals": sell_count,
+                "hold_signals": hold_count,
+                "average_confidence": round(avg_confidence, 3)
+            },
+            "decisions": decisions,
+            "premium_feature": True,
+            "user_id": current_user["id"]
+        }
+        
+    except Exception as e:
+        logger.error(f"AIバックテストエラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI backtest failed: {str(e)}"
         )

@@ -1,0 +1,62 @@
+{
+  "weekly": {
+    "timeframe": "weekly",
+    "last_updated": "2025-07-29T10:00:00",
+    "analysis_result": {
+      "analyzed": true,
+      "timestamp": "2025-07-29T10:00:00",
+      "price_at_analysis": 1844.0
+    },
+    "next_update_time": "2025-08-04T09:00:00"
+  },
+  "daily": {
+    "timeframe": "daily",
+    "last_updated": "2025-07-29T10:00:00",
+    "analysis_result": {
+      "analyzed": true,
+      "timestamp": "2025-07-29T10:00:00",
+      "price_at_analysis": 1844.0
+    },
+    "next_update_time": "2025-07-30T09:00:00"
+  },
+  "hourly_60": {
+    "timeframe": "hourly_60",
+    "last_updated": "2025-07-29T10:00:00",
+    "analysis_result": {
+      "analyzed": true,
+      "timestamp": "2025-07-29T10:00:00",
+      "price_at_analysis": 1844.0
+    },
+    "next_update_time": "2025-07-29T11:00:00"
+  },
+  "minute_15": {
+    "timeframe": "minute_15",
+    "last_updated": "2025-07-29T10:00:00",
+    "analysis_result": {
+      "analyzed": true,
+      "timestamp": "2025-07-29T10:00:00",
+      "price_at_analysis": 1844.0
+    },
+    "next_update_time": "2025-07-29T10:15:00"
+  },
+  "minute_5": {
+    "timeframe": "minute_5",
+    "last_updated": "2025-07-29T10:00:00",
+    "analysis_result": {
+      "analyzed": true,
+      "timestamp": "2025-07-29T10:00:00",
+      "price_at_analysis": 1844.0
+    },
+    "next_update_time": "2025-07-29T10:05:00"
+  },
+  "minute_1": {
+    "timeframe": "minute_1",
+    "last_updated": "2025-07-29T10:00:00",
+    "analysis_result": {
+      "analyzed": true,
+      "timestamp": "2025-07-29T10:00:00",
+      "price_at_analysis": 1844.0
+    },
+    "next_update_time": "2025-07-29T10:01:00"
+  }
+}
