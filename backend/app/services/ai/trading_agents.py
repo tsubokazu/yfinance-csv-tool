@@ -30,7 +30,7 @@ from app.services.ai.trading_tools import (
 logger = logging.getLogger(__name__)
 
 # OpenAI APIキーの設定と確認
-openai_api_key = os.getenv("OPENAI_API_KEY") or "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"
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
 if not openai_api_key or openai_api_key.startswith("your-"):
     logger.warning("OPENAI_API_KEY not properly configured")
