@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import logging
 
-from data_models import ChartImages, ChartImageData, TIMEFRAME_CONFIG
+from app.core.data_models import ChartImages, ChartImageData, TIMEFRAME_CONFIG
 
 logger = logging.getLogger(__name__)
 

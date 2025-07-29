@@ -7,8 +7,8 @@
 
 import logging
 from datetime import datetime, timedelta
-from chart_analysis_cache import ChartAnalysisCache
-from trading_continuity_engine import TradingContinuityEngine
+from app.services.efficiency.chart_analysis_cache import ChartAnalysisCache
+from app.services.efficiency.trading_continuity_engine import TradingContinuityEngine
 
 # ログ設定
 logging.basicConfig(

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional, List
 import logging
 
-from data_models import MarketContext, MarketStatus, IndexData
+from app.core.data_models import MarketContext, MarketStatus, IndexData
 
 logger = logging.getLogger(__name__)
 

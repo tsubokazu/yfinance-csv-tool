@@ -10,8 +10,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from minute_decision_engine import MinuteDecisionEngine
-from simple_chart_generator import SimpleChartGenerator
+from app.services.minute_decision_engine import MinuteDecisionEngine
+from app.services.visualization.simple_chart_generator import SimpleChartGenerator
 
 
 def setup_logging():

@@ -12,7 +12,7 @@ import json
 import csv
 from typing import List, Dict, Any
 
-from minute_decision_engine import MinuteDecisionEngine
+from app.services.minute_decision_engine import MinuteDecisionEngine
 
 def setup_logging(log_level: str = "INFO"):
     """ログ設定"""

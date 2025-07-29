@@ -4,7 +4,7 @@
 """
 
 from datetime import datetime
-from chart_analysis_cache import ChartAnalysisCache
+from app.services.efficiency.chart_analysis_cache import ChartAnalysisCache
 from pathlib import Path
 import shutil
 

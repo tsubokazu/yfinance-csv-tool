@@ -18,7 +18,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-from data_models import ChartImages, MinuteDecisionPackage, TimeframeIndicators, TIMEFRAME_CONFIG
+from app.core.data_models import ChartImages, MinuteDecisionPackage, TimeframeIndicators, TIMEFRAME_CONFIG
 
 
 class ChartImageGenerator:

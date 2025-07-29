@@ -16,7 +16,7 @@ from datetime import datetime
 import base64
 
 from langchain_core.tools import tool
-from data_models import MinuteDecisionPackage, CurrentPriceData, TimeframeIndicators
+from app.core.data_models import MinuteDecisionPackage, CurrentPriceData, TimeframeIndicators
 
 logger = logging.getLogger(__name__)
 

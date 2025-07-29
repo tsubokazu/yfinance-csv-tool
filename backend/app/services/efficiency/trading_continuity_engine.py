@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 
-from chart_analysis_cache import ChartAnalysisCache
-from timeframe_chart_analyzer import TimeframeChartAnalyzer
+from app.services.efficiency.chart_analysis_cache import ChartAnalysisCache
+from app.services.efficiency.timeframe_chart_analyzer import TimeframeChartAnalyzer
 
 logger = logging.getLogger(__name__)
 

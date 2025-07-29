@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from minute_decision_engine import MinuteDecisionEngine
+from app.services.minute_decision_engine import MinuteDecisionEngine
 
 
 def setup_logging():

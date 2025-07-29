@@ -12,9 +12,9 @@ from pathlib import Path
 import concurrent.futures
 import time
 
-from technical_indicators import TechnicalIndicators
-from market_data_engine import MarketDataEngine
-from data_models import (
+from app.core.technical_indicators import TechnicalIndicators
+from app.services.market_data_engine import MarketDataEngine
+from app.core.data_models import (
     MinuteDecisionPackage, CurrentPriceData, TimeframeIndicators,
     WeeklyIndicators, DailyIndicators, HourlyIndicators, MinuteIndicators,
     MovingAverageData, VWAPData, BollingerBandData, VolumeProfileData,
@@ -42,11 +42,11 @@ class MinuteDecisionEngine:
         if enable_chart_generation:
             try:
                 if use_simple_charts:
-                    from simple_chart_generator import SimpleChartGenerator
+                    from app.services.visualization.simple_chart_generator import SimpleChartGenerator
                     self.chart_generator = SimpleChartGenerator()
                     print("✅ 軽量チャート生成エンジンを初期化しました")
                 else:
-                    from chart_generator import ChartImageGenerator
+                    from app.services.visualization.chart_generator import ChartImageGenerator
                     self.chart_generator = ChartImageGenerator()
                     print("✅ TradingViewチャート生成エンジンを初期化しました")
             except ImportError as e:

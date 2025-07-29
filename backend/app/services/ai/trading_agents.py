@@ -18,7 +18,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from trading_tools import (
+from app.services.ai.trading_tools import (
     analyze_chart_image,
     extract_technical_patterns,
     analyze_technical_indicators,

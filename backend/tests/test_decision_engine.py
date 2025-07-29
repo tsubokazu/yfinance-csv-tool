@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import json
 
-from minute_decision_engine import MinuteDecisionEngine
+from app.services.minute_decision_engine import MinuteDecisionEngine
 
 def setup_logging():
     """ログ設定"""
