@@ -51,8 +51,7 @@ class SupabaseClient:
     
     def is_connected(self) -> bool:
         """Check if Supabase client is properly initialized"""
-        # For now, return False due to library compatibility issues
-        return False
+        return self._client is not None
     
     async def get_user_profile(self, user_id: str) -> Optional[dict]:
         """Get user profile from Supabase"""
@@ -90,7 +89,21 @@ class SupabaseClient:
         
         try:
             response = self._client.auth.get_user(access_token)
-            return response.user if response else None
+            if response and response.user:
+                # ユーザーオブジェクトを辞書形式に変換
+                user = response.user
+                return {
+                    "sub": user.id,
+                    "id": user.id,
+                    "email": user.email,
+                    "email_verified": user.email_confirmed_at is not None,
+                    "app_metadata": user.app_metadata,
+                    "user_metadata": user.user_metadata,
+                    "role": user.role,
+                    "created_at": str(user.created_at) if user.created_at else "",
+                    "email_confirmed_at": str(user.email_confirmed_at) if user.email_confirmed_at else ""
+                }
+            return None
         except Exception as e:
             logger.error(f"Failed to verify user: {e}")
             return None

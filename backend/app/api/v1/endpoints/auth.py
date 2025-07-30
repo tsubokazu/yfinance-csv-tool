@@ -63,12 +63,12 @@ async def login(request: LoginRequest) -> Dict[str, Any]:
             "access_token": session_data["access_token"],
             "token_type": "bearer",
             "user": {
-                "id": user_data["id"],
-                "email": user_data["email"],
-                "full_name": user_data.get("user_metadata", {}).get("full_name", ""),
-                "username": user_data.get("user_metadata", {}).get("username", ""),
-                "created_at": user_data["created_at"],
-                "email_confirmed_at": user_data.get("email_confirmed_at", "")
+                "id": user_data.id,
+                "email": user_data.email,
+                "full_name": user_data.user_metadata.get("full_name", ""),
+                "username": user_data.user_metadata.get("username", ""),
+                "created_at": str(user_data.created_at),
+                "email_confirmed_at": str(user_data.email_confirmed_at) if user_data.email_confirmed_at else ""
             }
         }
         
@@ -113,12 +113,12 @@ async def register(request: RegisterRequest) -> Dict[str, Any]:
             "access_token": session_data.access_token,
             "token_type": "bearer",
             "user": {
-                "id": user_data["id"],
-                "email": user_data["email"],
-                "full_name": user_data.get("user_metadata", {}).get("full_name", ""),
-                "username": user_data.get("user_metadata", {}).get("username", ""),
-                "created_at": user_data["created_at"],
-                "email_confirmed_at": user_data.get("email_confirmed_at", "")
+                "id": user_data.id,
+                "email": user_data.email,
+                "full_name": user_data.user_metadata.get("full_name", ""),
+                "username": user_data.user_metadata.get("username", ""),
+                "created_at": str(user_data.created_at),
+                "email_confirmed_at": str(user_data.email_confirmed_at) if user_data.email_confirmed_at else ""
             }
         }
         
@@ -140,11 +140,11 @@ async def get_me(
     """
     try:
         return {
-            "id": current_user["id"],
-            "email": current_user["email"],
+            "id": current_user.get("sub", current_user.get("id", "")),
+            "email": current_user.get("email", ""),
             "full_name": current_user.get("user_metadata", {}).get("full_name", ""),
             "username": current_user.get("user_metadata", {}).get("username", ""),
-            "created_at": current_user["created_at"],
+            "created_at": current_user.get("created_at", ""),
             "email_confirmed_at": current_user.get("email_confirmed_at", "")
         }
         

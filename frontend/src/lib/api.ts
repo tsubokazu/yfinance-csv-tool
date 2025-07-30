@@ -50,20 +50,36 @@ class APIClient {
 
   // Auth endpoints
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    const response = await this.instance.post<AuthResponse>('/auth/register', data);
-    this.setToken(response.data.session.access_token);
-    return response.data;
+    const response = await this.instance.post<any>('/auth/register', data);
+    this.setToken(response.data.access_token);
+    return {
+      user: response.data.user,
+      session: {
+        access_token: response.data.access_token,
+        refresh_token: '', // バックエンドから提供されていない
+        expires_in: 3600,
+        token_type: response.data.token_type
+      }
+    };
   }
 
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const response = await this.instance.post<AuthResponse>('/auth/login', data);
-    this.setToken(response.data.session.access_token);
-    return response.data;
+    const response = await this.instance.post<any>('/auth/login', data);
+    this.setToken(response.data.access_token);
+    return {
+      user: response.data.user,
+      session: {
+        access_token: response.data.access_token,
+        refresh_token: '', // バックエンドから提供されていない
+        expires_in: 3600,
+        token_type: response.data.token_type
+      }
+    };
   }
 
   async getCurrentUser(): Promise<{ user: User; profile?: UserProfile }> {
-    const response = await this.instance.get<{ user: User; profile?: UserProfile }>('/auth/me');
-    return response.data;
+    const response = await this.instance.get<User>('/auth/me');
+    return { user: response.data };
   }
 
   async logout(): Promise<void> {
