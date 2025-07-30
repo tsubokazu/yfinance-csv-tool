@@ -53,3 +53,12 @@ site/
 dist/
 build/
 *.egg-info/
+
+# Node.js (ルートレベルのみ - frontendディレクトリ内は除外)
+/node_modules/
+/package.json
+/package-lock.json
+
+# Development test files
+backend/test_*.py
+**/test_temp_*.py
