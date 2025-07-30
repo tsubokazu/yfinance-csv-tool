@@ -39,6 +39,21 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = Field(default="", env="OPENAI_API_KEY")
     
+    # Tachibana Securities API
+    TACHIBANA_USER_ID: str = Field(default="", env="TACHIBANA_USER_ID")
+    TACHIBANA_PASSWORD: str = Field(default="", env="TACHIBANA_PASSWORD")
+    TACHIBANA_DEMO_MODE: bool = Field(default=True, env="TACHIBANA_DEMO_MODE")
+    TACHIBANA_API_VERSION: str = Field(default="v4r7", env="TACHIBANA_API_VERSION")
+    TACHIBANA_DEMO_BASE_URL: str = Field(
+        default="https://demo-kabuka.e-shiten.jp/e_api_v4r7/",
+        env="TACHIBANA_DEMO_BASE_URL"
+    )
+    TACHIBANA_PROD_BASE_URL: str = Field(
+        default="https://kabuka.e-shiten.jp/e_api_v4r7/",
+        env="TACHIBANA_PROD_BASE_URL"
+    )
+    TACHIBANA_SESSION_TIMEOUT: int = Field(default=3600, env="TACHIBANA_SESSION_TIMEOUT")  # 1時間
+    
     # Database (optional direct connection)
     DATABASE_URL: Optional[str] = Field(default=None, env="DATABASE_URL")
     

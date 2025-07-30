@@ -147,3 +147,31 @@ async def register_user(email: str, password: str, **metadata) -> Optional[Dict[
     except Exception as e:
         logger.error(f"Failed to register user: {e}")
         return None
+
+async def get_current_user_from_token(token: str) -> Dict[str, Any]:
+    """
+    トークンから現在ユーザーを取得（WebSocket用）
+    
+    Args:
+        token: JWT アクセストークン
+        
+    Returns:
+        Dict[str, Any]: ユーザー情報
+        
+    Raises:
+        AuthenticationError: 認証失敗時
+    """
+    try:
+        if not token:
+            raise AuthenticationError("No authentication token provided")
+        
+        # Verify token with Supabase
+        user = await supabase_client.verify_user(token)
+        if not user:
+            raise AuthenticationError("Invalid or expired token")
+        
+        return user
+        
+    except Exception as e:
+        logger.error(f"Token authentication error: {e}")
+        raise AuthenticationError("Token verification failed")

@@ -8,12 +8,15 @@ from pydantic import BaseModel
 import logging
 
 from app.services.minute_decision_engine import MinuteDecisionEngine
+from app.services.data_source_router import DataSourceRouter, DataSource
 from app.core.auth import get_current_user, get_optional_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# トレーディングエンジンのインスタンス
+# データソースルーターのインスタンス
+data_router = DataSourceRouter()
+# 従来のトレーディングエンジン（後方互換性）
 trading_engine = MinuteDecisionEngine()
 
 class TradingDecisionRequest(BaseModel):
@@ -302,4 +305,100 @@ async def run_ai_backtest(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI backtest failed: {str(e)}"
+        )
+
+# === データソースルーター統合エンドポイント ===
+
+@router.get("/data-sources/status")
+async def get_data_sources_status(
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+) -> Dict[str, Any]:
+    """
+    データソース状態確認
+    """
+    try:
+        status_info = await data_router.get_data_source_status()
+        status_info["user_authenticated"] = current_user is not None
+        return status_info
+        
+    except Exception as e:
+        logger.error(f"データソース状態取得エラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Data source status check failed: {str(e)}"
+        )
+
+@router.post("/realtime/price")
+async def get_realtime_price(
+    request: TradingDecisionRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+) -> Dict[str, Any]:
+    """
+    リアルタイム価格取得（データソース自動選択）
+    """
+    try:
+        # データソース自動選択で価格取得
+        price_data = await data_router.get_current_price(request.symbol, DataSource.AUTO)
+        
+        return {
+            "symbol": request.symbol,
+            "timestamp": datetime.now().isoformat(),
+            "current_price": price_data.current_price,
+            "price_change": price_data.price_change,
+            "price_change_percent": price_data.price_change_percent,
+            "volume": price_data.volume,
+            "source": "auto_selected",
+            "user_authenticated": current_user is not None
+        }
+        
+    except Exception as e:
+        logger.error(f"リアルタイム価格取得エラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Realtime price retrieval failed: {str(e)}"
+        )
+
+@router.post("/hybrid/decision")
+async def get_hybrid_trading_decision(
+    request: TradingDecisionRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+) -> Dict[str, Any]:
+    """
+    ハイブリッドトレーディングデータ取得
+    （立花証券リアルタイム価格 + yfinance分析データ）
+    """
+    try:
+        logger.info(f"ハイブリッドデータ要求: {request.symbol} @ {request.timestamp}")
+        
+        # データソースルーターでハイブリッドデータ取得
+        decision_package = await data_router.get_trading_data(
+            request.symbol, 
+            request.timestamp,
+            DataSource.AUTO
+        )
+        
+        return {
+            "symbol": decision_package.symbol,
+            "timestamp": decision_package.timestamp.isoformat(),
+            "current_price": decision_package.current_price.current_price,
+            "price_change": decision_package.current_price.price_change,
+            "price_change_percent": decision_package.current_price.price_change_percent,
+            "volume": decision_package.current_price.volume,
+            "market_data": {
+                "indices": decision_package.market_context.indices if decision_package.market_context else {},
+                "forex": decision_package.market_context.forex_rates if decision_package.market_context else {}
+            },
+            "technical_indicators": {
+                timeframe: getattr(decision_package.technical_indicators, timeframe, {})
+                for timeframe in ["daily", "hourly_60", "minute_15", "minute_5", "minute_1"]
+            },
+            "data_source": "hybrid",
+            "user_authenticated": current_user is not None
+        }
+        
+    except Exception as e:
+        logger.error(f"ハイブリッドデータ取得エラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Hybrid trading data retrieval failed: {str(e)}"
         )
