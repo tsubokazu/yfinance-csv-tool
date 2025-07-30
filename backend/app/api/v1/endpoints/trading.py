@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, Request
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import logging
+import pandas as pd
 
 from app.services.minute_decision_engine import MinuteDecisionEngine
 from app.services.data_source_router import DataSourceRouter, DataSource
@@ -401,4 +402,64 @@ async def get_hybrid_trading_decision(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Hybrid trading data retrieval failed: {str(e)}"
+        )
+
+class HistoricalDataRequest(BaseModel):
+    """
+    Request model for historical price data
+    """
+    symbol: str
+    period: str = "1mo"  # 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+    interval: str = "1d"  # 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+
+@router.post("/historical")
+async def get_historical_data(
+    request: HistoricalDataRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+) -> Dict[str, Any]:
+    """
+    Get historical price data for charts
+    """
+    try:
+        import yfinance as yf
+        logger.info(f"履歴データ取得: {request.symbol} period={request.period} interval={request.interval}")
+        
+        # yfinanceでデータ取得
+        ticker = yf.Ticker(request.symbol)
+        hist = ticker.history(period=request.period, interval=request.interval)
+        
+        if hist.empty:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No historical data found for {request.symbol}"
+            )
+        
+        # チャート用データに変換
+        chart_data = []
+        for index, row in hist.iterrows():
+            chart_data.append({
+                "timestamp": index.isoformat(),
+                "date": index.strftime("%Y-%m-%d"),
+                "time": index.strftime("%H:%M"),
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": int(row['Volume']) if not pd.isna(row['Volume']) else 0
+            })
+        
+        return {
+            "symbol": request.symbol,
+            "period": request.period,
+            "interval": request.interval,
+            "data_points": len(chart_data),
+            "chart_data": chart_data,
+            "user_authenticated": current_user is not None
+        }
+        
+    except Exception as e:
+        logger.error(f"履歴データ取得エラー: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Historical data retrieval failed: {str(e)}"
         )

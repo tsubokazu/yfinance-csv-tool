@@ -133,6 +133,35 @@ class APIClient {
     });
     return response.data;
   }
+
+  async getHistoricalData(
+    symbol: string,
+    period: string = '1mo',
+    interval: string = '1d'
+  ): Promise<{
+    symbol: string;
+    period: string;
+    interval: string;
+    data_points: number;
+    chart_data: Array<{
+      timestamp: string;
+      date: string;
+      time: string;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>;
+    user_authenticated: boolean;
+  }> {
+    const response = await this.instance.post('/trading/historical', {
+      symbol,
+      period,
+      interval,
+    });
+    return response.data;
+  }
 }
 
 export const apiClient = new APIClient();

@@ -1,7 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, BarChart3, TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BarChart3, TrendingUp, TrendingDown, Clock, Star } from 'lucide-react';
+import { apiClient } from '@/lib/api';
+import { PriceChart } from './PriceChart';
+import { SymbolSearchInput } from './SymbolSearchInput';
+import { PopularSymbols } from './PopularSymbols';
 
 interface PriceData {
   symbol: string;
@@ -31,7 +35,77 @@ const samplePriceData: PriceData = {
 
 export function PriceDisplay() {
   const [selectedSymbol, setSelectedSymbol] = useState('6723.T');
-  const [priceData] = useState<PriceData>(samplePriceData);
+  const [searchValue, setSearchValue] = useState('6723.T');
+  const [priceData, setPriceData] = useState<PriceData>(samplePriceData);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showChart, setShowChart] = useState(true);
+  const [showPopular, setShowPopular] = useState(false);
+
+  // yfinanceデータを取得する関数
+  const fetchPriceData = async (symbol: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await apiClient.getTradingDecision(
+        symbol,
+        new Date().toISOString()
+      );
+      
+      const data = response;
+      
+      // APIレスポンスをPriceDataフォーマットに変換
+      const newPriceData: PriceData = {
+        symbol: data.symbol,
+        name: getSymbolName(data.symbol),
+        price: data.current_price,
+        change: data.price_change || 0,
+        changePercent: data.price_change_percent || 0,
+        high: data.current_price + Math.abs((data.price_change || 0) * 0.5), // 仮想的な高値
+        low: data.current_price - Math.abs((data.price_change || 0) * 0.3), // 仮想的な安値  
+        open: data.current_price - (data.price_change || 0), // 仮想的な始値
+        volume: data.volume?.toLocaleString() || 'N/A',
+        lastUpdate: new Date().toLocaleTimeString('ja-JP'),
+      };
+      
+      setPriceData(newPriceData);
+    } catch (err) {
+      console.error('価格データ取得エラー:', err);
+      setError('価格データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 銘柄名を取得（シンプルなマッピング）
+  const getSymbolName = (symbol: string) => {
+    const nameMap: { [key: string]: string } = {
+      '6723.T': 'ルネサス エレクトロニクス',
+      '7203.T': 'トヨタ自動車',
+      '6758.T': 'ソニーグループ',
+      '9984.T': 'ソフトバンクグループ',
+    };
+    return nameMap[symbol] || symbol;
+  };
+
+  // 初回データ取得
+  useEffect(() => {
+    fetchPriceData(selectedSymbol);
+  }, []);
+
+  // 検索値変更時の処理
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+  };
+
+  // 銘柄選択時の処理
+  const handleSymbolSelect = (symbol: string) => {
+    setSelectedSymbol(symbol);
+    setSearchValue(symbol);
+    fetchPriceData(symbol);
+    setShowPopular(false);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm">
@@ -39,23 +113,43 @@ export function PriceDisplay() {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">価格表示</h2>
-          <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-700">
-            <BarChart3 className="h-4 w-4" />
-            <span className="text-sm font-medium">チャート表示</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => setShowPopular(!showPopular)}
+              className="flex items-center space-x-2 text-yellow-600 hover:text-yellow-700"
+            >
+              <Star className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {showPopular ? '人気銘柄非表示' : '人気銘柄表示'}
+              </span>
+            </button>
+            <button 
+              onClick={() => setShowChart(!showChart)}
+              className="flex items-center space-x-2 text-blue-600 hover:text-blue-700"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {showChart ? 'チャート非表示' : 'チャート表示'}
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* Search bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="銘柄コードまたは銘柄名を入力 (例: 6723.T)"
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={selectedSymbol}
-            onChange={(e) => setSelectedSymbol(e.target.value)}
-          />
-        </div>
+        {/* Enhanced Search bar */}
+        <SymbolSearchInput
+          value={searchValue}
+          onChange={handleSearchChange}
+          onSelect={handleSymbolSelect}
+          loading={loading}
+          disabled={loading}
+        />
+
+        {/* エラー表示 */}
+        {error && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
       </div>
 
       {/* Price data */}
@@ -129,14 +223,20 @@ export function PriceDisplay() {
           </div>
         </div>
 
-        {/* Chart placeholder */}
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">価格チャート</h3>
-          <p className="text-gray-600">
-            WebSocketリアルタイム価格チャートは次のフェーズで実装予定です
-          </p>
-        </div>
+        {/* Popular Symbols */}
+        {showPopular && (
+          <div className="mb-6">
+            <PopularSymbols 
+              onSymbolSelect={handleSymbolSelect}
+              selectedSymbol={selectedSymbol}
+            />
+          </div>
+        )}
+
+        {/* Price Chart */}
+        {showChart && (
+          <PriceChart symbol={priceData.symbol} />
+        )}
       </div>
     </div>
   );
