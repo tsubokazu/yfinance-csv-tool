@@ -59,8 +59,7 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000"],
-        env="CORS_ORIGINS"
+        default=["http://localhost:3000", "http://localhost:3001"]
     )
     
     # Logging
@@ -82,13 +81,8 @@ class Settings(BaseSettings):
     DATA_DIR: Path = BASE_DIR / "data"
     LOGS_DIR: Path = BASE_DIR / "logs"
     
-    @field_validator("CORS_ORIGINS", mode='before')
-    def parse_cors_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
-    
     @field_validator("ENVIRONMENT")
+    @classmethod
     def validate_environment(cls, v):
         allowed = ["development", "staging", "production"]
         if v not in allowed:

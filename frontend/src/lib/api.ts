@@ -8,7 +8,7 @@ class APIClient {
 
   constructor() {
     this.instance = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+      baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1', // プロキシ経由
       headers: {
         'Content-Type': 'application/json',
       },
@@ -17,6 +17,12 @@ class APIClient {
     // Request interceptor to add auth token
     this.instance.interceptors.request.use((config) => {
       const token = this.getToken();
+      console.log('API Request Interceptor:', {
+        url: config.url,
+        hasToken: !!token,
+        tokenPrefix: token ? token.substring(0, 20) + '...' : 'None'
+      });
+      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -27,7 +33,14 @@ class APIClient {
     this.instance.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
+        console.log('API Response Error:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url
+        });
+        
         if (error.response?.status === 401) {
+          console.log('401 Unauthorized - Clearing token and redirecting');
           this.clearToken();
           window.location.href = '/login';
         }
@@ -37,15 +50,16 @@ class APIClient {
   }
 
   private getToken(): string | null {
-    return localStorage.getItem('access_token');
+    // Supabaseトークンを使用
+    return localStorage.getItem('auth-token');
   }
 
   private setToken(token: string): void {
-    localStorage.setItem('access_token', token);
+    localStorage.setItem('auth-token', token);
   }
 
   private clearToken(): void {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('auth-token');
   }
 
   // Auth endpoints
@@ -65,6 +79,7 @@ class APIClient {
 
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await this.instance.post<any>('/auth/login', data);
+    // バックエンドから返されたSupabaseアクセストークンを保存
     this.setToken(response.data.access_token);
     return {
       user: response.data.user,

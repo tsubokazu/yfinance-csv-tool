@@ -85,14 +85,24 @@ class SupabaseClient:
     async def verify_user(self, access_token: str) -> Optional[dict]:
         """Verify user authentication with Supabase"""
         if not self._client:
+            logger.error("Supabase client not initialized")
             return None
         
         try:
+            logger.info(f"Token verification started - Token: {access_token[:20]}...")
+            logger.info(f"Supabase URL: {settings.SUPABASE_URL}")
+            logger.info(f"Using anon key: {settings.SUPABASE_ANON_KEY[:20]}...")
+            
             response = self._client.auth.get_user(access_token)
-            if response and response.user:
+            
+            logger.info(f"Supabase response type: {type(response)}")
+            logger.info(f"Response object: {response}")
+            
+            if response and hasattr(response, 'user') and response.user:
+                logger.info(f"User verified successfully: {response.user.email}")
                 # ユーザーオブジェクトを辞書形式に変換
                 user = response.user
-                return {
+                user_dict = {
                     "sub": user.id,
                     "id": user.id,
                     "email": user.email,
@@ -103,9 +113,15 @@ class SupabaseClient:
                     "created_at": str(user.created_at) if user.created_at else "",
                     "email_confirmed_at": str(user.email_confirmed_at) if user.email_confirmed_at else ""
                 }
-            return None
+                logger.info(f"Returning user dict: {user_dict}")
+                return user_dict
+            else:
+                logger.warning(f"Token verification returned no user - Response: {response}")
+                return None
         except Exception as e:
-            logger.error(f"Failed to verify user: {e}")
+            logger.error(f"Failed to verify user with token {access_token[:10]}...: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Exception details: {str(e)}")
             return None
 
 # Global instance
