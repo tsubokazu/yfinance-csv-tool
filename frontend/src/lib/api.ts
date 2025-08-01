@@ -72,7 +72,8 @@ class APIClient {
         access_token: response.data.access_token,
         refresh_token: '', // バックエンドから提供されていない
         expires_in: 3600,
-        token_type: response.data.token_type
+        token_type: response.data.token_type,
+        user: response.data.user
       }
     };
   }
@@ -87,7 +88,8 @@ class APIClient {
         access_token: response.data.access_token,
         refresh_token: '', // バックエンドから提供されていない
         expires_in: 3600,
-        token_type: response.data.token_type
+        token_type: response.data.token_type,
+        user: response.data.user
       }
     };
   }

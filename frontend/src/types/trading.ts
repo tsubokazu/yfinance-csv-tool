@@ -25,6 +25,9 @@ export interface MarketContext {
 export interface TradingData {
   symbol: string;
   current_price: number;
+  price_change?: number;
+  price_change_percent?: number;
+  volume?: number;
   technical_indicators: TechnicalIndicators;
   market_data: MarketContext;
   timestamp: string;
@@ -60,8 +63,9 @@ export interface PriceUpdate {
 }
 
 export interface WebSocketMessage {
-  type: "subscribe" | "ai_decision_request" | "price_update" | "ai_decision_result";
+  type: "subscribe" | "ai_decision_request" | "price_update" | "ai_decision_result" | "price_update_error" | "connection_established";
   symbol?: string;
   decision_data?: AIDecisionResult;
+  error?: string;
   [key: string]: any;
 }

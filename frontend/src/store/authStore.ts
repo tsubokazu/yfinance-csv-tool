@@ -25,7 +25,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       profile: null,
       isAuthenticated: false, // 初期値をfalseに設定し、init()で正確な状態を設定
-      isLoading: false,
+      isLoading: true, // 初期化中はローディング状態を維持
       error: null,
 
       login: async (email: string, password: string) => {
@@ -131,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
             try {
               await get().getCurrentUser();
               console.log('Auth Store Init - User data loaded successfully');
+              set({ isLoading: false }); // 成功時にローディング完了
             } catch (error) {
               console.error('Failed to initialize user data:', error);
               // トークンが無効な場合はクリア

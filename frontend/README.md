@@ -154,17 +154,38 @@ wsManager.requestAIDecision('6723.T');
 
 ## 🧪 開発状況
 
-**Phase 2.2 完了**: 基本認証システム実装完了 (2025-07-30)
+**Phase 11 完了**: Next.js フルスタック実装・WebSocket統合・ドキュメント更新 (2025-08-01)
 
 - ✅ Next.js 15 + 最新技術スタック統合
 - ✅ 型安全なAPIクライアント・WebSocket管理
 - ✅ Zustand状態管理システム完成
 - ✅ TanStack Query v5プロバイダー・カスタムフック実装
 - ✅ **基本認証UI完成**: LoginForm・RegisterForm・ログインページ
-- ✅ **フロントエンド動作確認**: http://localhost:3000/login (200 OK)
+- ✅ **フロントエンド動作確認**: http://localhost:3001/login (200 OK)
 - ✅ **バックエンドAPI連携**: 認証エンドポイント動作確認済み
+- ✅ **メインダッシュボード実装完了**: 価格表示・ウォッチリスト・AI判断パネル
+- ✅ **WebSocketリアルタイム通信**: 価格更新・AI判断結果配信
+- ✅ **バックテスト機能実装**: フォーム・結果表示・チャート可視化
+- ✅ **認証状態管理改善**: 初期化タイミング修正によるリダイレクト問題解決
 
-**Phase 2.3 Next Steps**: メインダッシュボード→WebSocketリアルタイム通信→AI判断可視化
+## 🐛 解決済み問題
+
+### バックテストページリダイレクト問題 (2025-08-01)
+
+**問題**: `/dashboard/backtest` にアクセスすると `/dashboard` にリダイレクトされる
+
+**原因**: `authStore.ts` の初期状態で `isLoading: false` のため、認証初期化完了前に認証チェックが実行され、未認証と判定されてリダイレクトが発生
+
+**解決策**:
+1. `authStore.ts` の初期状態を `isLoading: true` に変更
+2. `init()` メソッドの成功パスで `isLoading: false` を適切に設定
+3. 認証状態の初期化が完了するまでローディング状態を維持
+
+**修正ファイル**: 
+- `frontend/src/store/authStore.ts`
+- `eslint.config.mjs` (一時的な型エラー回避)
+
+**Phase 12 Next Steps**: パフォーマンス最適化・エラーハンドリング強化・テスト実装
 
 ## 🔗 関連ドキュメント
 
