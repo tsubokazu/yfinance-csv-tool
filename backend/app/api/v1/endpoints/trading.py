@@ -243,20 +243,64 @@ async def run_ai_backtest(
         from app.services.ai.ai_trading_decision import AITradingDecisionEngine
         ai_engine = AITradingDecisionEngine()
         
-        # 時系列でのAI判断実行
-        current_time = request.start_time
-        decisions = []
-        decision_count = 0
+        # 指定期間内の取引時間のみでタイムラインを生成
+        timeline = []
+        current_date = request.start_time.date()
+        end_date = request.end_time.date()
         
-        while current_time <= request.end_time and decision_count < request.max_decisions:
+        while current_date <= end_date:
+            # 平日のみ処理
+            if current_date.weekday() < 5:  # 0=月曜日, 6=日曜日
+                # その日の9:00から15:00まで、指定間隔で時刻を生成
+                market_start = datetime.combine(current_date, datetime.min.time().replace(hour=9, minute=0))
+                market_end = datetime.combine(current_date, datetime.min.time().replace(hour=15, minute=0))
+                
+                # 指定された期間内の場合のみ追加
+                if market_start.date() == request.start_time.date():
+                    # 開始日の場合、開始時刻を考慮
+                    if request.start_time.time() > market_start.time():
+                        if request.start_time.time() <= market_end.time():
+                            market_start = request.start_time.replace(second=0, microsecond=0)
+                        else:
+                            # 開始時刻が15:00を超えている場合はスキップ
+                            current_date += timedelta(days=1)
+                            continue
+                
+                if market_end.date() == request.end_time.date():
+                    # 終了日の場合、終了時刻を考慮
+                    if request.end_time.time() < market_start.time():
+                        # 終了時刻が9:00より前の場合はスキップ
+                        current_date += timedelta(days=1)
+                        continue
+                    elif request.end_time.time() < market_end.time():
+                        market_end = request.end_time.replace(second=0, microsecond=0)
+                
+                # 市場時間内で指定間隔ごとにタイムスタンプを生成
+                current_time = market_start
+                while current_time <= market_end:
+                    timeline.append(current_time)
+                    current_time += timedelta(minutes=request.interval_minutes)
+            
+            current_date += timedelta(days=1)
+        
+        # タイムラインを最大判断回数で制限
+        if len(timeline) > request.max_decisions:
+            timeline = timeline[:request.max_decisions]
+        
+        logger.info(f"生成されたタイムライン: {len(timeline)}件 (最初: {timeline[0] if timeline else 'なし'}, 最後: {timeline[-1] if timeline else 'なし'})")
+        
+        # 時系列でのAI判断実行
+        decisions = []
+        
+        for i, timestamp in enumerate(timeline):
             try:
                 # データ取得とAI判断
-                decision_package = trading_engine.get_minute_decision_data(request.symbol, current_time)
+                decision_package = trading_engine.get_minute_decision_data(request.symbol, timestamp)
                 ai_result = ai_engine.analyze_trading_decision(decision_package)
                 
                 # 結果を記録
                 decisions.append({
-                    "timestamp": current_time.isoformat(),
+                    "timestamp": timestamp.isoformat(),
                     "price": decision_package.current_price.current_price,
                     "ai_decision": ai_result.get("final_decision", "HOLD"),
                     "confidence": ai_result.get("confidence_level", 0.5),
@@ -264,16 +308,12 @@ async def run_ai_backtest(
                     "analysis_efficiency": ai_result.get("analysis_efficiency", "full_analysis")
                 })
                 
-                decision_count += 1
-                current_time += timedelta(minutes=request.interval_minutes)
-                
                 # プログレス情報
-                if decision_count % 5 == 0:
-                    logger.info(f"バックテスト進捗: {decision_count}/{request.max_decisions}")
+                if (i + 1) % 5 == 0:
+                    logger.info(f"バックテスト進捗: {i + 1}/{len(timeline)}")
                 
             except Exception as e:
-                logger.warning(f"時刻 {current_time} でのAI判断失敗: {e}")
-                current_time += timedelta(minutes=request.interval_minutes)
+                logger.warning(f"時刻 {timestamp} でのAI判断失敗: {e}")
                 continue
         
         # 統計情報の計算
