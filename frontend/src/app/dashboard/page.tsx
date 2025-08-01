@@ -13,9 +13,6 @@ export default function DashboardPage() {
   const { isAuthenticated, user, isLoading } = useAuth();
   const router = useRouter();
 
-  // 一時的に認証チェックを無効化（yfinanceデータ統合テスト用）
-  // TODO: 認証システム修正後に有効化
-  /*
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/login');
@@ -36,7 +33,6 @@ export default function DashboardPage() {
   if (!isAuthenticated) {
     return null;
   }
-  */
 
   return (
     <DashboardLayout>

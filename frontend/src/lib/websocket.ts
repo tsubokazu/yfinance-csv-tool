@@ -24,6 +24,7 @@ export class WebSocketManager {
     return new Promise((resolve, reject) => {
       try {
         const wsUrl = this.getWebSocketUrl();
+        console.log('WebSocket接続試行:', wsUrl);
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
@@ -76,15 +77,28 @@ export class WebSocketManager {
   }
 
   private getWebSocketUrl(): string {
-    const baseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000/api/v1/ws';
-    const endpoint = this.authenticated ? '/live/authenticated' : '/live';
+    const baseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000';
+    
+    // baseUrlに既にパスが含まれているかチェック
+    const isBaseUrlComplete = baseUrl.includes('/api/v1/ws');
+    
+    const endpoint = this.authenticated ? 
+      (isBaseUrlComplete ? '/live/authenticated' : '/api/v1/ws/live/authenticated') : 
+      (isBaseUrlComplete ? '/live' : '/api/v1/ws/live');
+    
+    console.log('WebSocket URL構築:', { baseUrl, endpoint, authenticated: this.authenticated, isBaseUrlComplete });
     
     if (this.authenticated) {
-      const token = localStorage.getItem('access_token');
-      return `${baseUrl}${endpoint}?token=${token}`;
+      // 認証システムで使用している正しいトークンキーを使用
+      const token = localStorage.getItem('auth-token');
+      const fullUrl = `${baseUrl}${endpoint}?token=${token}`;
+      console.log('認証WebSocket URL:', fullUrl);
+      return fullUrl;
     }
     
-    return `${baseUrl}${endpoint}`;
+    const fullUrl = `${baseUrl}${endpoint}`;
+    console.log('非認証WebSocket URL:', fullUrl);
+    return fullUrl;
   }
 
   private handleMessage(data: string): void {
@@ -96,9 +110,18 @@ export class WebSocketManager {
           this.emitEvent('price_update', message as PriceUpdate);
           this.emitEvent(`price_update:${message.symbol}`, message as PriceUpdate);
           break;
+        case 'price_update_error':
+          console.warn(`Price update error for ${message.symbol}:`, message.error);
+          this.emitEvent('price_update_error', message);
+          this.emitEvent(`price_update_error:${message.symbol}`, message);
+          break;
         case 'ai_decision_result':
           this.emitEvent('ai_decision_result', message.decision_data);
           this.emitEvent(`ai_decision_result:${message.symbol}`, message.decision_data);
+          break;
+        case 'connection_established':
+          console.log('WebSocket connection established:', message);
+          this.emitEvent('connection_established', message);
           break;
         default:
           this.emitEvent('message', message);

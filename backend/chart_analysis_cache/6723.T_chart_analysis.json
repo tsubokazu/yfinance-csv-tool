@@ -11,52 +11,60 @@
   },
   "daily": {
     "timeframe": "daily",
-    "last_updated": "2025-07-29T10:00:00",
+    "last_updated": "2025-07-30T09:00:00",
     "analysis_result": {
       "analyzed": true,
-      "timestamp": "2025-07-29T10:00:00",
-      "price_at_analysis": 1844.0
+      "timestamp": "2025-07-30T09:00:00",
+      "price_at_analysis": 1859.5
     },
-    "next_update_time": "2025-07-30T09:00:00"
+    "next_update_time": "2025-07-31T09:00:00"
   },
   "hourly_60": {
     "timeframe": "hourly_60",
-    "last_updated": "2025-07-29T10:00:00",
+    "last_updated": "2025-07-31T19:49:09.263394",
     "analysis_result": {
-      "analyzed": true,
-      "timestamp": "2025-07-29T10:00:00",
-      "price_at_analysis": 1844.0
+      "timeframe": "hourly_60",
+      "analysis_method": "indicators_only",
+      "timestamp": "2025-07-31T19:49:09.263392",
+      "summary": "hourly_60 indicators-based analysis",
+      "confidence_score": 0.6
     },
-    "next_update_time": "2025-07-29T11:00:00"
+    "next_update_time": "2025-07-31T20:00:00"
   },
   "minute_15": {
     "timeframe": "minute_15",
-    "last_updated": "2025-07-29T10:00:00",
+    "last_updated": "2025-07-31T19:49:09.237106",
     "analysis_result": {
-      "analyzed": true,
-      "timestamp": "2025-07-29T10:00:00",
-      "price_at_analysis": 1844.0
+      "timeframe": "minute_15",
+      "analysis_method": "indicators_only",
+      "timestamp": "2025-07-31T19:49:09.237104",
+      "summary": "minute_15 indicators-based analysis",
+      "confidence_score": 0.6
     },
-    "next_update_time": "2025-07-29T10:15:00"
+    "next_update_time": "2025-07-31T20:00:00"
   },
   "minute_5": {
     "timeframe": "minute_5",
-    "last_updated": "2025-07-29T10:00:00",
+    "last_updated": "2025-07-31T19:49:09.237342",
     "analysis_result": {
-      "analyzed": true,
-      "timestamp": "2025-07-29T10:00:00",
-      "price_at_analysis": 1844.0
+      "timeframe": "minute_5",
+      "analysis_method": "indicators_only",
+      "timestamp": "2025-07-31T19:49:09.237340",
+      "summary": "minute_5 indicators-based analysis",
+      "confidence_score": 0.6
     },
-    "next_update_time": "2025-07-29T10:05:00"
+    "next_update_time": "2025-07-31T19:50:00"
   },
   "minute_1": {
     "timeframe": "minute_1",
-    "last_updated": "2025-07-29T10:00:00",
+    "last_updated": "2025-07-31T19:49:09.237512",
     "analysis_result": {
-      "analyzed": true,
-      "timestamp": "2025-07-29T10:00:00",
-      "price_at_analysis": 1844.0
+      "timeframe": "minute_1",
+      "analysis_method": "indicators_only",
+      "timestamp": "2025-07-31T19:49:09.237511",
+      "summary": "minute_1 indicators-based analysis",
+      "confidence_score": 0.6
     },
-    "next_update_time": "2025-07-29T10:01:00"
+    "next_update_time": "2025-07-31T19:50:00"
   }
 }

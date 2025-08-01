@@ -29,7 +29,15 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     }
 
     try {
+      console.log('ログイン試行開始:', { email });
       await login({ email, password });
+      
+      // ログイン成功後のデバッグ情報
+      console.log('ログイン成功 - 認証状態確認:', {
+        hasToken: !!localStorage.getItem('auth-token'),
+        tokenValue: localStorage.getItem('auth-token')?.substring(0, 20) + '...'
+      });
+      
       router.push('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);

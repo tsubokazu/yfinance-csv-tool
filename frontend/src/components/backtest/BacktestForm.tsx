@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Play, Settings, Calendar, Clock, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { SymbolSearchInput } from '@/components/trading/SymbolSearchInput';
@@ -18,20 +18,22 @@ interface BacktestFormProps {
 
 export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
   const [symbol, setSymbol] = useState('6723.T');
-  // デフォルト値を過去1週間に設定
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    const date = new Date();
-    return date.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('15:00');
   const [intervalMinutes, setIntervalMinutes] = useState(60);
   const [maxDecisions, setMaxDecisions] = useState(50);
+
+  // デフォルト値をクライアントサイドで設定（Hydrationエラー回避）
+  useEffect(() => {
+    const today = new Date();
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    setStartDate(weekAgo.toISOString().split('T')[0]);
+    setEndDate(today.toISOString().split('T')[0]);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

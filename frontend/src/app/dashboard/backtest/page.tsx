@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { BacktestForm } from '@/components/backtest/BacktestForm';
 import { BacktestResults } from '@/components/backtest/BacktestResults';
@@ -32,6 +33,7 @@ interface BacktestResult {
 }
 
 export default function BacktestPage() {
+  const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<BacktestResult | null>(null);
@@ -43,12 +45,35 @@ export default function BacktestPage() {
   } | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
 
+  // 認証チェック
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
   // 認証状態の初期化を監視
   useEffect(() => {
     if (!isLoading) {
       setAuthInitialized(true);
     }
   }, [isLoading]);
+
+  // ローディング状態またはログインしていない場合
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">認証確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleBacktestRun = async (params: {
     symbol: string;

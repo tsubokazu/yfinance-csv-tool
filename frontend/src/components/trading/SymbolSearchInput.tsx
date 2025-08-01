@@ -62,12 +62,13 @@ export function SymbolSearchInput({
   const [isOpen, setIsOpen] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<SearchSuggestion[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [hasFocused, setHasFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 検索フィルタリング
   useEffect(() => {
-    if (value.length >= 1) {
+    if (value.length >= 1 && hasFocused) {
       const searchTerm = value.toLowerCase();
       const filtered = searchSuggestions.filter(
         (suggestion) =>
@@ -83,7 +84,7 @@ export function SymbolSearchInput({
       setFilteredSuggestions([]);
       setIsOpen(false);
     }
-  }, [value]);
+  }, [value, hasFocused]);
 
   // クリック外しでドロップダウンを閉じる
   useEffect(() => {
@@ -164,10 +165,11 @@ export function SymbolSearchInput({
           ref={inputRef}
           type="text"
           placeholder={placeholder}
-          className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => setHasFocused(true)}
           disabled={disabled}
         />
         

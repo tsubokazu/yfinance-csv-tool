@@ -8,6 +8,10 @@ env/
 venv/
 ENV/
 .venv
+.python-version
+
+# uv (Python package manager)
+uv.lock
 
 # IDE
 .vscode/
@@ -20,15 +24,25 @@ ENV/
 data/csv_output/
 data/backtest_results/
 data/charts/
-data/trading_states/
-data/chart_analysis_cache/
 logs/
 *.log
+
+# Backend runtime state files (gitignore these for clean repo)
+backend/trading_states/
+backend/chart_analysis_cache/
 
 # Environment
 .env
 .env.local
 .env.production
+.env.development
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/.cache/
 
 # Testing
 .coverage
@@ -62,3 +76,13 @@ build/
 # Development test files
 backend/test_*.py
 **/test_temp_*.py
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini

@@ -5,6 +5,7 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import pytz
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
@@ -339,15 +340,10 @@ class MinuteDecisionEngine:
             if daily_data.empty:
                 raise ValueError("日足データが取得できません")
             
-            # 最新の価格情報
-            if not minute_data.empty:
-                latest_data = minute_data.iloc[-1]
-                current_price = float(latest_data['Close'])
-                current_volume = int(latest_data['Volume']) if not pd.isna(latest_data['Volume']) else 0
-            else:
-                latest_data = daily_data.iloc[-1]
-                current_price = float(latest_data['Close'])
-                current_volume = int(latest_data['Volume']) if not pd.isna(latest_data['Volume']) else 0
+            # バックテスト時は指定時刻に最も近いデータを取得
+            current_price, current_volume = self._get_price_at_timestamp(
+                timeframe_data, timestamp, symbol
+            )
             
             # 当日データ
             today_data = daily_data.iloc[-1]
@@ -389,6 +385,148 @@ class MinuteDecisionEngine:
         except Exception as e:
             logger.error(f"現在価格データ生成エラー: {str(e)}")
             raise
+    
+    def _get_price_at_timestamp(self, timeframe_data: Dict[str, pd.DataFrame], 
+                               timestamp: datetime, symbol: str) -> tuple[float, int]:
+        """
+        指定時刻における適切なOHLCV価格を取得
+        
+        Args:
+            timeframe_data: 時間軸別データ
+            timestamp: 対象時刻
+            symbol: 銘柄コード
+            
+        Returns:
+            tuple[float, int]: (価格, 出来高)
+        """
+        try:
+            # 優先順位: 1分足 → 5分足 → 15分足 → 60分足 → 日足
+            timeframes = ['minute_1', 'minute_5', 'minute_15', 'hourly_60', 'daily']
+            
+            for timeframe in timeframes:
+                data = timeframe_data.get(timeframe, pd.DataFrame())
+                if data.empty:
+                    continue
+                
+                # インデックスをdatetimeに変換
+                if not isinstance(data.index, pd.DatetimeIndex):
+                    data.index = pd.to_datetime(data.index)
+                
+                # タイムゾーンを統一して比較
+                # data.indexがタイムゾーン付きの場合、timestampもタイムゾーン付きにする
+                if data.index.tz is not None:
+                    if timestamp.tzinfo is None:
+                        # timestampがナイーブの場合、Asia/Tokyoタイムゾーンを追加
+                        jst = pytz.timezone('Asia/Tokyo')
+                        timestamp = jst.localize(timestamp)
+                    else:
+                        # timestampのタイムゾーンをdata.indexに合わせる
+                        timestamp = timestamp.astimezone(data.index.tz)
+                else:
+                    # data.indexがナイーブの場合、timestampもナイーブにする
+                    if timestamp.tzinfo is not None:
+                        timestamp = timestamp.replace(tzinfo=None)
+                
+                # 指定時刻以前の最も近いデータを取得
+                before_timestamp = data.index <= timestamp
+                if before_timestamp.any():
+                    matching_data = data[before_timestamp].iloc[-1]
+                    
+                    # バックテスト用価格選択ロジック
+                    # 市場時間中であれば、より実際の取引に近い価格を使用
+                    price = self._select_backtest_price(matching_data, timestamp)
+                    volume = int(matching_data['Volume']) if not pd.isna(matching_data['Volume']) else 0
+                    
+                    logger.debug(f"価格取得成功: {symbol} {timestamp} -> {timeframe} Price={price}")
+                    return price, volume
+            
+            # どの時間軸でもデータが見つからない場合は最新の日足Closeを使用
+            daily_data = timeframe_data.get('daily', pd.DataFrame())
+            if not daily_data.empty:
+                latest_data = daily_data.iloc[-1]
+                price = float(latest_data['Close'])
+                volume = int(latest_data['Volume']) if not pd.isna(latest_data['Volume']) else 0
+                logger.warning(f"指定時刻のデータなし、日足Close使用: {symbol} {timestamp} -> {price}")
+                return price, volume
+            
+            raise ValueError(f"価格データが取得できません: {symbol} @ {timestamp}")
+            
+        except Exception as e:
+            logger.error(f"価格取得エラー: {symbol} @ {timestamp} - {str(e)}")
+            raise
+    
+    def _select_backtest_price(self, ohlcv_data, timestamp: datetime) -> float:
+        """
+        バックテスト用の適切な価格を選択
+        
+        Args:
+            ohlcv_data: OHLCV価格データ（pandas Series）
+            timestamp: 対象時刻
+            
+        Returns:
+            float: 選択された価格
+        """
+        try:
+            # 市場時間判定（日本市場: 9:00-15:00、米国市場: 22:30-5:00 JST）
+            hour = timestamp.hour
+            minute = timestamp.minute
+            
+            # OHLCV価格を取得
+            open_price = float(ohlcv_data['Open'])
+            high_price = float(ohlcv_data['High'])
+            low_price = float(ohlcv_data['Low'])  
+            close_price = float(ohlcv_data['Close'])
+            
+            # 日本市場時間（9:00-15:00）での価格選択ロジック
+            if 9 <= hour < 15:
+                # 市場開始直後（9:00-9:30）: Open価格寄り
+                if hour == 9 and minute < 30:
+                    # Open価格を基準に、実際の約定価格を推定
+                    return self._estimate_execution_price(open_price, high_price, low_price, 'market_open')
+                # 場中（9:30-14:30）: High/Low間の中央値寄り  
+                elif hour < 14 or (hour == 14 and minute < 30):
+                    return self._estimate_execution_price(open_price, high_price, low_price, 'market_hours')
+                # 市場終了間際（14:30-15:00）: Close価格寄り
+                else:
+                    return self._estimate_execution_price(close_price, high_price, low_price, 'market_close')
+            else:
+                # 市場時間外: Close価格を使用
+                return close_price
+                
+        except Exception as e:
+            logger.warning(f"価格選択エラー、Close価格を使用: {str(e)}")
+            return float(ohlcv_data['Close'])
+    
+    def _estimate_execution_price(self, base_price: float, high: float, low: float, market_phase: str) -> float:
+        """
+        実際の約定価格を推定
+        
+        Args:
+            base_price: 基準価格
+            high: 高値
+            low: 安値
+            market_phase: 市場フェーズ
+            
+        Returns:
+            float: 推定約定価格
+        """
+        try:
+            if market_phase == 'market_open':
+                # 寄り付き: Open価格に近いが、実際はスプレッドを考慮
+                spread_factor = 0.001  # 0.1%のスプレッド想定
+                return base_price * (1 + spread_factor)
+            elif market_phase == 'market_hours':
+                # 場中: High/Lowの中央値寄り（流動性が高い時間帯）
+                mid_price = (high + low) / 2
+                return mid_price
+            elif market_phase == 'market_close':
+                # 大引け: Close価格に近い
+                return base_price
+            else:
+                return base_price
+                
+        except Exception:
+            return base_price
     
     def _get_company_name(self, symbol: str) -> str:
         """銘柄名を取得"""

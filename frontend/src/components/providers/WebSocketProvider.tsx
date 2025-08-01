@@ -29,7 +29,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     requestAIDecision,
   } = useWebSocket({
     authenticated: true,
-    autoConnect: true,
+    autoConnect: true, // デバッグのために再有効化
   });
 
   // Default subscriptions for dashboard

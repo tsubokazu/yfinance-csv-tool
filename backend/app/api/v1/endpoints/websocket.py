@@ -234,7 +234,18 @@ class ConnectionManager:
                         await self.broadcast_to_symbol(symbol, stream_data)
                         
                     except Exception as e:
-                        logger.error(f"価格ストリーミングエラー [{symbol}]: {str(e)}")
+                        logger.warning(f"価格ストリーミングエラー [{symbol}]: {str(e)}")
+                        # エラーメッセージを送信
+                        error_data = {
+                            "type": "price_update_error",
+                            "symbol": symbol,
+                            "timestamp": datetime.now().isoformat(),
+                            "error": str(e),
+                            "source": "live_stream"
+                        }
+                        await self.broadcast_to_symbol(symbol, error_data)
+                        # エラーが続く場合は少し間隔を空ける
+                        continue
                         
                 # 配信間隔（調整可能）
                 await asyncio.sleep(2.0)  # 2秒間隔
@@ -305,17 +316,23 @@ async def websocket_live_endpoint(websocket: WebSocket):
         await connection_manager.disconnect(websocket)
 
 @router.websocket("/live/authenticated")
-async def websocket_authenticated_endpoint(websocket: WebSocket, token: str):
+async def websocket_authenticated_endpoint(websocket: WebSocket):
     """
     認証済みライブデータ配信WebSocketエンドポイント
     """
     await connection_manager.initialize()
     
-    # トークン認証
+    # クエリパラメータからトークンを取得
     try:
+        token = websocket.query_params.get("token")
+        if not token:
+            await websocket.close(code=4001, reason="Token required")
+            return
+            
         user = await get_current_user_from_token(token)
         user_id = user.get("id")
     except Exception as e:
+        logger.error(f"WebSocket認証エラー: {str(e)}")
         await websocket.close(code=4001, reason="Authentication failed")
         return
         
