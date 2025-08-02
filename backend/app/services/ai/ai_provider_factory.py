@@ -29,7 +29,7 @@ class AIProviderFactory:
     # デフォルトモデル設定
     DEFAULT_MODELS = {
         "openai": "gpt-4o",
-        "gemini": "gemini-1.5-pro",
+        "gemini": "gemini-2.5-flash",
     }
     
     # 環境変数名のマッピング

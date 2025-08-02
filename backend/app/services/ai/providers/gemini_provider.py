@@ -25,13 +25,14 @@ class GeminiProvider(AIProviderBase):
     
     # サポートされているモデル
     SUPPORTED_MODELS = {
+        "gemini-2.5-flash": {"supports_vision": True, "max_tokens": 1048576},
         "gemini-1.5-pro": {"supports_vision": True, "max_tokens": 1048576},
         "gemini-1.5-flash": {"supports_vision": True, "max_tokens": 1048576},
         "gemini-pro": {"supports_vision": False, "max_tokens": 32768},
         "gemini-pro-vision": {"supports_vision": True, "max_tokens": 32768},
     }
     
-    def __init__(self, api_key: str, model: str = "gemini-1.5-pro", **kwargs):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", **kwargs):
         """
         Geminiプロバイダーの初期化
         
