@@ -10,7 +10,7 @@ LangGraphトレーディングエージェント定義
 
 import os
 import logging
-from typing import Dict, Any, List, Literal
+from typing import Dict, Any, List, Literal, Optional
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, AIMessage
@@ -30,53 +30,92 @@ from app.services.ai.trading_tools import (
 
 logger = logging.getLogger(__name__)
 
-# マルチAI対応 LLMプロバイダーの初期化
-try:
-    llm_provider: AIProviderBase = get_ai_provider()
-    logger.info(f"AI プロバイダー初期化完了: {llm_provider.provider_name} - {llm_provider.model}")
-except Exception as e:
-    logger.error(f"AI プロバイダー初期化エラー: {e}")
-    llm_provider = None
+# グローバルプロバイダーキャッシュ（後方互換性のため）
+_default_llm_provider: Optional[AIProviderBase] = None
+
+# デフォルトプロバイダーの初期化（初回のみ実行）
+def _init_default_provider():
+    global _default_llm_provider
+    if _default_llm_provider is None:
+        try:
+            _default_llm_provider = get_ai_provider()
+            logger.info(f"デフォルトAI プロバイダー初期化完了: {_default_llm_provider.provider_name} - {_default_llm_provider.model}")
+        except Exception as e:
+            logger.error(f"デフォルトAI プロバイダー初期化エラー: {e}")
+            _default_llm_provider = None
+
+def _get_llm_provider(ai_provider: Optional[str] = None, ai_model: Optional[str] = None) -> Optional[AIProviderBase]:
+    """動的にAIプロバイダーを取得"""
+    if ai_provider or ai_model:
+        # 動的にプロバイダーを選択
+        try:
+            return get_ai_provider(provider_name=ai_provider, model=ai_model)
+        except Exception as e:
+            logger.warning(f"動的プロバイダー取得失敗: {e}, デフォルトにフォールバック")
+    
+    # デフォルトプロバイダーを使用
+    global _default_llm_provider
+    if _default_llm_provider is None:
+        _init_default_provider()
+    return _default_llm_provider
 
 
-def create_chart_analyst_agent():
+def create_chart_analyst_agent(ai_provider: Optional[str] = None, ai_model: Optional[str] = None):
     """
     チャート分析専門エージェントを作成
     
     チャート画像を分析し、テクニカルパターンを特定する専門家
     """
-    # 簡易版: LangGraphエージェントではなく直接プロバイダーを使用
+    llm_provider = _get_llm_provider(ai_provider, ai_model)
     if llm_provider is None:
         raise RuntimeError("AIプロバイダーが初期化されていません")
     
-    # シンプルなAI分析関数を返す
-    def analyze_charts(chart_data, technical_data):
-        try:
-            prompt = f"""
-あなたは株式チャート分析の専門家です。以下のデータを分析してください：
-
-チャートデータ: {chart_data}
-テクニカルデータ: {technical_data}
-
-分析結果をJSON形式で返してください：
-{{
-  "trend_analysis": "トレンド分析",
-  "pattern_recognition": "パターン認識結果",
-  "support_resistance": "サポート・レジスタンス",
-  "confidence": 0.7
-}}
-"""
-            
-            messages = [{"role": "user", "content": prompt}]
-            response = llm_provider.invoke(messages)
-            return response.content
-        except Exception as e:
-            return f"チャート分析エラー: {e}"
+    # LangChainアダプターでラップして返す
+    from .langchain_adapter import create_langchain_llm
+    llm = create_langchain_llm(llm_provider)
     
-    return analyze_charts
+    # invoke可能なオブジェクトを作成
+    class ChartAnalystAgent:
+        def __init__(self, llm):
+            self.llm = llm
+        
+        def invoke(self, input_data, **kwargs):
+            try:
+                # messagesから最後のHumanMessageを取得してプロンプトを作成
+                messages = input_data.get("messages", [])
+                if messages and hasattr(messages[-1], 'content'):
+                    # HumanMessageの内容を処理
+                    human_message = messages[-1]
+                    if isinstance(human_message.content, list):
+                        # 画像付きメッセージの場合、テキスト部分のみを抽出
+                        text_content = ""
+                        for part in human_message.content:
+                            if isinstance(part, dict) and part.get("type") == "text":
+                                text_content += part.get("text", "") + "\n"
+                        prompt = text_content
+                    else:
+                        prompt = str(human_message.content)
+                else:
+                    prompt = str(input_data)
+                
+                # AIプロバイダーでレスポンスを生成
+                ai_response = self.llm.invoke(prompt)
+                
+                # 辞書形式で結果を返す（既存のコードと互換性を保つ）
+                return {
+                    "messages": [ai_response]
+                }
+            except Exception as e:
+                from langchain_core.messages import AIMessage
+                error_message = AIMessage(content=f"チャート分析エラー: {e}")
+                return {
+                    "messages": [error_message]
+                }
+    
+    return ChartAnalystAgent(llm)
 
 
-def create_technical_analyst_agent():
+def create_technical_analyst_agent(ai_provider: Optional[str] = None, ai_model: Optional[str] = None):
     """
     テクニカル指標分析専門エージェントを作成
     
@@ -128,6 +167,7 @@ def create_technical_analyst_agent():
     
     from .langchain_adapter import create_langchain_llm
     
+    llm_provider = _get_llm_provider(ai_provider, ai_model)
     if llm_provider is None:
         raise RuntimeError("AIプロバイダーが初期化されていません")
     
@@ -141,7 +181,7 @@ def create_technical_analyst_agent():
     )
 
 
-def create_trading_decision_agent():
+def create_trading_decision_agent(ai_provider: Optional[str] = None, ai_model: Optional[str] = None):
     """
     売買判断専門エージェントを作成
     
@@ -208,6 +248,7 @@ def create_trading_decision_agent():
     
     from .langchain_adapter import create_langchain_llm
     
+    llm_provider = _get_llm_provider(ai_provider, ai_model)
     if llm_provider is None:
         raise RuntimeError("AIプロバイダーが初期化されていません")
     
@@ -284,7 +325,7 @@ def chart_analyst_node(state: Dict[str, Any]) -> Command[Literal["technical_anal
             }
         ]
         
-        # 各チャート画像をメッセージに追加
+        # 各チャート画像をメッセージに追加（⚠️高コスト・高トークン注意）
         for timeframe, image_info in chart_images.items():
             image_path = ""
             if isinstance(image_info, dict):
@@ -312,6 +353,9 @@ def chart_analyst_node(state: Dict[str, Any]) -> Command[Literal["technical_anal
                     })
                 except Exception as e:
                     logger.warning(f"画像読み込みエラー {timeframe}: {e}")
+        
+        # 画像付きで分析を実行
+        logger.info(f"🖼️ チャート画像分析実行: {len(chart_images)}時間軸")
         
         input_data = {
             "messages": state.get("messages", []) + [

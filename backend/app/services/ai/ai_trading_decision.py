@@ -61,19 +61,24 @@ class AITradingDecisionEngine:
     バックテストデータから売買判断を生成します。
     """
     
-    def __init__(self, enable_logging: bool = True):
+    def __init__(self, enable_logging: bool = True, ai_provider: str = None, ai_model: str = None):
         """
         初期化
         
         Args:
             enable_logging: ログ出力を有効にするか
+            ai_provider: 使用するAIプロバイダー ("openai" または "gemini")
+            ai_model: 使用するAIモデル名
         """
         self.enable_logging = enable_logging
+        self.ai_provider = ai_provider
+        self.ai_model = ai_model
         self._setup_logging()
         self._workflow = self._build_workflow()
         self.continuity_engine = TradingContinuityEngine()
         
-        logger.info("🤖 AIトレーディング判断エンジン初期化完了")
+        provider_info = f" (Provider: {ai_provider}, Model: {ai_model})" if ai_provider else ""
+        logger.info(f"🤖 AIトレーディング判断エンジン初期化完了{provider_info}")
     
     def _setup_logging(self):
         """ログ設定"""
@@ -98,13 +103,83 @@ class AITradingDecisionEngine:
         Returns:
             コンパイル済みワークフロー
         """
+        # 動的エージェント作成用のカスタムノード関数を作成
+        from .trading_agents import (
+            create_chart_analyst_agent,
+            create_technical_analyst_agent, 
+            create_trading_decision_agent
+        )
+        
+        def dynamic_chart_analyst_node(state):
+            """AIプロバイダー対応チャート分析ノード"""
+            # ワークフロー実行時にプロバイダー情報を取得
+            ai_provider = getattr(self, 'ai_provider', None)
+            ai_model = getattr(self, 'ai_model', None)
+            
+            # 動的にエージェントを作成
+            dynamic_agent = create_chart_analyst_agent(ai_provider, ai_model)
+            
+            # 既存のノード処理をコピー
+            from .trading_agents import chart_analyst_node
+            import types
+            
+            # グローバルエージェントを一時的に置換
+            original_agent = None
+            try:
+                import app.services.ai.trading_agents as agents_module
+                original_agent = agents_module.chart_analyst_agent
+                agents_module.chart_analyst_agent = dynamic_agent
+                
+                return chart_analyst_node(state)
+            finally:
+                if original_agent:
+                    agents_module.chart_analyst_agent = original_agent
+        
+        def dynamic_technical_analyst_node(state):
+            """AIプロバイダー対応テクニカル分析ノード"""
+            ai_provider = getattr(self, 'ai_provider', None)
+            ai_model = getattr(self, 'ai_model', None)
+            
+            dynamic_agent = create_technical_analyst_agent(ai_provider, ai_model)
+            
+            from .trading_agents import technical_analyst_node
+            original_agent = None
+            try:
+                import app.services.ai.trading_agents as agents_module
+                original_agent = agents_module.technical_analyst_agent
+                agents_module.technical_analyst_agent = dynamic_agent
+                
+                return technical_analyst_node(state)
+            finally:
+                if original_agent:
+                    agents_module.technical_analyst_agent = original_agent
+        
+        def dynamic_trading_decision_node(state):
+            """AIプロバイダー対応売買判断ノード"""
+            ai_provider = getattr(self, 'ai_provider', None)
+            ai_model = getattr(self, 'ai_model', None)
+            
+            dynamic_agent = create_trading_decision_agent(ai_provider, ai_model)
+            
+            from .trading_agents import trading_decision_node
+            original_agent = None
+            try:
+                import app.services.ai.trading_agents as agents_module
+                original_agent = agents_module.trading_decision_agent
+                agents_module.trading_decision_agent = dynamic_agent
+                
+                return trading_decision_node(state)
+            finally:
+                if original_agent:
+                    agents_module.trading_decision_agent = original_agent
+        
         # ワークフローグラフの定義
         workflow = StateGraph(TradingDecisionState)
         
-        # ノードの追加
-        workflow.add_node("chart_analyst", chart_analyst_node)
-        workflow.add_node("technical_analyst", technical_analyst_node)
-        workflow.add_node("trading_decision", trading_decision_node)
+        # 動的ノードの追加
+        workflow.add_node("chart_analyst", dynamic_chart_analyst_node)
+        workflow.add_node("technical_analyst", dynamic_technical_analyst_node)
+        workflow.add_node("trading_decision", dynamic_trading_decision_node)
         
         # エッジの定義 (実行フロー)
         workflow.add_edge(START, "chart_analyst")
@@ -116,7 +191,8 @@ class AITradingDecisionEngine:
         # ワークフローのコンパイル
         compiled_workflow = workflow.compile()
         
-        logger.info("📊 LangGraphワークフロー構築完了")
+        provider_info = f" (Provider: {self.ai_provider}, Model: {self.ai_model})" if self.ai_provider else ""
+        logger.info(f"📊 LangGraphワークフロー構築完了{provider_info}")
         return compiled_workflow
     
     def analyze_trading_decision(
