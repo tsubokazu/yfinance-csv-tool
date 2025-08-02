@@ -20,8 +20,23 @@ from app.core.data_models import ChartImages, ChartImageData, TIMEFRAME_CONFIG
 logger = logging.getLogger(__name__)
 
 # 日本語フォント設定
-plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'Hiragino Sans', 'DejaVu Sans']
+import matplotlib.font_manager as fm
+
+# 利用可能な日本語フォントを検索
+available_fonts = [f.name for f in fm.fontManager.ttflist]
+japanese_fonts = []
+for font in ['Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'Meiryo', 'MS Gothic', 'Arial Unicode MS']:
+    if font in available_fonts:
+        japanese_fonts.append(font)
+
+# フォールバック付きフォント設定
+if japanese_fonts:
+    plt.rcParams['font.sans-serif'] = japanese_fonts + ['DejaVu Sans']
+else:
+    plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
+    
 plt.rcParams['font.size'] = 10
+plt.rcParams['axes.unicode_minus'] = False  # マイナス記号文字化け対策
 
 class SimpleChartGenerator:
     """軽量チャート生成クラス"""
@@ -92,7 +107,7 @@ class SimpleChartGenerator:
                     color = self.colors.get(period_key, '#666666')
                     
                     # データのインデックスを合わせる
-                    aligned_ma = ma_series.reindex(chart_data.index).fillna(method='ffill')
+                    aligned_ma = ma_series.reindex(chart_data.index).ffill()
                     
                     addplots.append(
                         mpf.make_addplot(
@@ -107,7 +122,7 @@ class SimpleChartGenerator:
         if 'vwap' in indicators and 'daily' in indicators['vwap']:
             vwap_series = indicators['vwap']['daily']
             if isinstance(vwap_series, pd.Series) and not vwap_series.empty:
-                aligned_vwap = vwap_series.reindex(chart_data.index).fillna(method='ffill')
+                aligned_vwap = vwap_series.reindex(chart_data.index).ffill()
                 
                 addplots.append(
                     mpf.make_addplot(
@@ -127,8 +142,8 @@ class SimpleChartGenerator:
                 lower_series = bb['lower']
                 
                 if isinstance(upper_series, pd.Series) and isinstance(lower_series, pd.Series):
-                    aligned_upper = upper_series.reindex(chart_data.index).fillna(method='ffill')
-                    aligned_lower = lower_series.reindex(chart_data.index).fillna(method='ffill')
+                    aligned_upper = upper_series.reindex(chart_data.index).ffill()
+                    aligned_lower = lower_series.reindex(chart_data.index).ffill()
                     
                     addplots.extend([
                         mpf.make_addplot(
@@ -178,14 +193,14 @@ class SimpleChartGenerator:
             # チャートデータの準備
             chart_data, addplots = self._prepare_chart_data(data, indicators)
             
-            # 時間軸名の取得
+            # 時間軸名の取得（英語版でフォント警告回避）
             timeframe_names = {
-                'weekly': '週足',
-                'daily': '日足',
-                'hourly_60': '60分足',
-                'minute_15': '15分足',
-                'minute_5': '5分足',
-                'minute_1': '1分足'
+                'weekly': 'Weekly',
+                'daily': 'Daily', 
+                'hourly_60': '60min',
+                'minute_15': '15min',
+                'minute_5': '5min',
+                'minute_1': '1min'
             }
             
             # ファイル名の生成

@@ -22,6 +22,7 @@ dependencies = [
     "passlib>=1.7.4",
     "pydantic-settings>=2.10.1",
     "python-jose>=3.5.0",
+    "pytz>=2024.1",
     "redis>=6.2.0",
     "setuptools>=80.9.0",
     "sqlalchemy>=2.0.42",
