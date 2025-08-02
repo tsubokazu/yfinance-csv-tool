@@ -34,7 +34,7 @@ def test_imports():
         return False
     
     try:
-        from trading_tools import analyze_chart_image, make_trading_decision
+        from app.services.ai.trading_tools import analyze_chart_image, make_trading_decision
         print("✅ trading_tools: OK")
     except Exception as e:
         print(f"❌ trading_tools: {e}")
