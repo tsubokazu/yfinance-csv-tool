@@ -12,42 +12,56 @@ interface BacktestFormProps {
     endDate: string;
     intervalMinutes: number;
     maxDecisions: number;
+    aiModel: string;
+    aiProvider: string;
   }) => void;
   isRunning: boolean;
 }
 
 export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
   const [symbol, setSymbol] = useState('6723.T');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('15:00');
+  const [startDateTime, setStartDateTime] = useState('');
+  const [endDateTime, setEndDateTime] = useState('');
   const [intervalMinutes, setIntervalMinutes] = useState(60);
   const [maxDecisions, setMaxDecisions] = useState(50);
+  const [aiModel, setAiModel] = useState('simple');
+  const [aiProvider, setAiProvider] = useState('gemini');
 
   // デフォルト値をクライアントサイドで設定（Hydrationエラー回避）
   useEffect(() => {
-    const today = new Date();
+    const now = new Date();
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     
-    setStartDate(weekAgo.toISOString().split('T')[0]);
-    setEndDate(today.toISOString().split('T')[0]);
+    // 取引時間に設定（9:00-15:00）
+    weekAgo.setHours(9, 0, 0, 0);
+    now.setHours(15, 0, 0, 0);
+    
+    setStartDateTime(weekAgo.toISOString().slice(0, 16));
+    setEndDateTime(now.toISOString().slice(0, 16));
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // 日付と時刻を組み合わせてISOString形式に変換
-    const startDateTime = `${startDate}T${startTime}:00`;
-    const endDateTime = `${endDate}T${endTime}:00`;
     
-    onRun({
-      symbol,
-      startDate: startDateTime,
-      endDate: endDateTime,
-      intervalMinutes,
-      maxDecisions,
-    });
+      // 日時入力をJSTとして扱い、バックエンドに直接送信
+      // datetime-localはローカルタイムゾーンで解釈されるため、JSTとして扱う
+      console.log('日時送信:', {
+        original_start: startDateTime,
+        original_end: endDateTime,
+        timezone_info: 'JSTとしてバックエンドに送信',
+        local_tz_offset: new Date().getTimezoneOffset()
+      });
+
+      onRun({
+        symbol,
+        startDate: startDateTime, // ISO文字列として直接送信
+        endDate: endDateTime,     // ISO文字列として直接送信
+        intervalMinutes,
+        maxDecisions,
+        aiModel,
+        aiProvider,
+      });
   };
 
   const handleSymbolSelect = (selectedSymbol: string) => {
@@ -71,24 +85,41 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
     { value: 500, label: '500回' },
   ];
 
+  // AI モデル選択肢
+  const aiModelOptions = [
+    { value: 'simple', label: 'シンプル判断' },
+    { value: 'integrated', label: '統合分析' },
+    { value: 'chart', label: 'チャート画像分析' },
+    { value: 'technical', label: 'テクニカル指標' },
+  ];
+
   // 期間プリセット
   const periodPresets = [
     {
       label: '今日',
       getValue: () => {
-        const today = new Date().toISOString().split('T')[0];
-        return { startDate: today, endDate: today };
+        const today = new Date();
+        const start = new Date(today);
+        start.setHours(9, 0, 0, 0);
+        const end = new Date(today);
+        end.setHours(15, 0, 0, 0);
+        return { 
+          startDateTime: start.toISOString().slice(0, 16), 
+          endDateTime: end.toISOString().slice(0, 16) 
+        };
       }
     },
     {
       label: '過去3日',
       getValue: () => {
         const end = new Date();
+        end.setHours(15, 0, 0, 0);
         const start = new Date();
         start.setDate(start.getDate() - 3);
+        start.setHours(9, 0, 0, 0);
         return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: end.toISOString().split('T')[0]
+          startDateTime: start.toISOString().slice(0, 16),
+          endDateTime: end.toISOString().slice(0, 16)
         };
       }
     },
@@ -96,11 +127,13 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
       label: '過去1週間',
       getValue: () => {
         const end = new Date();
+        end.setHours(15, 0, 0, 0);
         const start = new Date();
         start.setDate(start.getDate() - 7);
+        start.setHours(9, 0, 0, 0);
         return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: end.toISOString().split('T')[0]
+          startDateTime: start.toISOString().slice(0, 16),
+          endDateTime: end.toISOString().slice(0, 16)
         };
       }
     },
@@ -108,11 +141,13 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
       label: '過去1ヶ月',
       getValue: () => {
         const end = new Date();
+        end.setHours(15, 0, 0, 0);
         const start = new Date();
         start.setMonth(start.getMonth() - 1);
+        start.setHours(9, 0, 0, 0);
         return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: end.toISOString().split('T')[0]
+          startDateTime: start.toISOString().slice(0, 16),
+          endDateTime: end.toISOString().slice(0, 16)
         };
       }
     }
@@ -150,6 +185,97 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
             />
           </div>
 
+          {/* AI Model Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              使用AIモデル
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {aiModelOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setAiModel(option.value)}
+                  disabled={isRunning}
+                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                    aiModel === option.value
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              <p>
+                選択中: <span className="font-medium text-blue-600">
+                  {aiModelOptions.find(opt => opt.value === aiModel)?.label || 'シンプル判断'}
+                </span>
+              </p>
+              <p className="mt-1">
+                {aiModel === 'simple' && 'チャート画像のみの基本的な判断'}
+                {aiModel === 'integrated' && 'チャート画像、テクニカル指標、統合分析による総合判断'}
+                {aiModel === 'chart' && 'チャート画像分析に特化した判断'}
+                {aiModel === 'technical' && 'テクニカル指標分析に特化した判断'}
+              </p>
+            </div>
+          </div>
+
+          {/* AI Provider Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              使用AIプロバイダー
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAiProvider('openai')}
+                disabled={isRunning}
+                className={`px-4 py-3 text-sm rounded-md border transition-colors ${
+                  aiProvider === 'openai'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="text-center">
+                  <div className="font-medium">OpenAI GPT-4</div>
+                  <div className="text-xs mt-1 opacity-75">
+                    高精度分析（コスト高）
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAiProvider('gemini')}
+                disabled={isRunning}
+                className={`px-4 py-3 text-sm rounded-md border transition-colors ${
+                  aiProvider === 'gemini'
+                    ? 'bg-green-600 text-white border-green-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="text-center">
+                  <div className="font-medium">Gemini 2.5 Flash</div>
+                  <div className="text-xs mt-1 opacity-75">
+                    高速・効率的分析（コスト低）
+                  </div>
+                </div>
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              <p>
+                選択中: <span className="font-medium text-green-600">
+                  {aiProvider === 'openai' ? 'OpenAI GPT-4' : 'Gemini 2.5 Flash'}
+                </span>
+              </p>
+              <p className="mt-1">
+                {aiProvider === 'openai' && 'OpenAI GPT-4を使用した高精度なAI分析。詳細な推論能力と高い精度を提供しますが、コストが高めです。'}
+                {aiProvider === 'gemini' && 'Google Gemini 2.5 Flashを使用した高速で効率的なAI分析。バランスの取れた性能とコスト性能を提供します。'}
+              </p>
+            </div>
+          </div>
+
           {/* Period Presets */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -162,9 +288,9 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
                   key={preset.label}
                   type="button"
                   onClick={() => {
-                    const { startDate: newStart, endDate: newEnd } = preset.getValue();
-                    setStartDate(newStart);
-                    setEndDate(newEnd);
+                    const { startDateTime: newStart, endDateTime: newEnd } = preset.getValue();
+                    setStartDateTime(newStart);
+                    setEndDateTime(newEnd);
                   }}
                   disabled={isRunning}
                   className={`px-3 py-2 text-sm rounded-md border transition-colors bg-white text-gray-700 border-gray-300 hover:bg-gray-50 ${
@@ -177,48 +303,24 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
             </div>
           </div>
 
-          {/* Date Range */}
+          {/* Date and Time Range */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Input
-                label="開始日"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                label="開始日時"
+                type="datetime-local"
+                value={startDateTime}
+                onChange={(e) => setStartDateTime(e.target.value)}
                 disabled={isRunning}
                 required
               />
             </div>
             <div>
               <Input
-                label="終了日"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={isRunning}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Time Range */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Input
-                label="開始時刻"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                disabled={isRunning}
-                required
-              />
-            </div>
-            <div>
-              <Input
-                label="終了時刻"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                label="終了日時"
+                type="datetime-local"
+                value={endDateTime}
+                onChange={(e) => setEndDateTime(e.target.value)}
                 disabled={isRunning}
                 required
               />
@@ -253,7 +355,8 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
               <p className="mt-1">
                 選択中: <span className="font-medium text-blue-600">{intervalMinutes}分間隔</span>
                 {(() => {
-                  const totalMinutes = Math.ceil((new Date(`${endDate}T${endTime}`).getTime() - new Date(`${startDate}T${startTime}`).getTime()) / (1000 * 60));
+                  if (!startDateTime || !endDateTime) return '';
+                  const totalMinutes = Math.ceil((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / (1000 * 60));
                   const estimatedDecisions = Math.min(Math.ceil(totalMinutes / intervalMinutes), maxDecisions);
                   return ` (推定判断回数: 約${estimatedDecisions}回)`;
                 })()}
@@ -330,7 +433,8 @@ export function BacktestForm({ onRun, isRunning }: BacktestFormProps) {
                   <p>• 結果は参考情報として利用してください</p>
                 </div>
                 {(() => {
-                  const totalMinutes = Math.ceil((new Date(`${endDate}T${endTime}`).getTime() - new Date(`${startDate}T${startTime}`).getTime()) / (1000 * 60));
+                  if (!startDateTime || !endDateTime) return null;
+                  const totalMinutes = Math.ceil((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / (1000 * 60));
                   const estimatedDecisions = Math.min(Math.ceil(totalMinutes / intervalMinutes), maxDecisions);
                   const estimatedTime = Math.ceil(estimatedDecisions * 0.5); // 1判断あたり約0.5秒と仮定
                   

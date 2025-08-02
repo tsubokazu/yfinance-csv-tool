@@ -29,6 +29,23 @@ interface BacktestResult {
     confidence: number;
     reasoning: string[];
     analysis_efficiency: string;
+    detailed_analysis?: {
+      chart_analysis?: {
+        decision: 'BUY' | 'SELL' | 'HOLD';
+        confidence: number;
+        reasoning: string[];
+      };
+      technical_analysis?: {
+        decision: 'BUY' | 'SELL' | 'HOLD';
+        confidence: number;
+        reasoning: string[];
+      };
+      integrated_analysis?: {
+        decision: 'BUY' | 'SELL' | 'HOLD';
+        confidence: number;
+        reasoning: string[];
+      };
+    };
   }>;
 }
 
@@ -81,6 +98,8 @@ export default function BacktestPage() {
     endDate: string;
     intervalMinutes: number;
     maxDecisions: number;
+    aiModel: string;
+    aiProvider: string;
   }) => {
     setIsRunning(true);
     setError(null);
@@ -96,9 +115,20 @@ export default function BacktestPage() {
         tokenValue: localStorage.getItem('auth-token')?.substring(0, 20) + '...'
       });
       
-      // 推定実行時間を計算
-      const totalMinutes = Math.ceil((new Date(params.endDate).getTime() - new Date(params.startDate).getTime()) / (1000 * 60));
+      // 推定実行時間を計算（既にUTCに変換済みの時刻を使用）
+      const startTime = new Date(params.startDate);
+      const endTime = new Date(params.endDate);
+      const totalMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
       const estimatedDecisions = Math.min(Math.ceil(totalMinutes / params.intervalMinutes), params.maxDecisions);
+      
+      console.log('Time range calculation:', {
+        startDate: params.startDate,
+        endDate: params.endDate,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        totalMinutes,
+        estimatedDecisions
+      });
       
       setProgress({
         current: 0,
@@ -136,10 +166,12 @@ export default function BacktestPage() {
         },
         body: JSON.stringify({
           symbol: params.symbol,
-          start_time: new Date(params.startDate).toISOString(),
-          end_time: new Date(params.endDate).toISOString(),
+          start_time: params.startDate, // JST時刻として送信
+          end_time: params.endDate,     // JST時刻として送信
           interval_minutes: params.intervalMinutes,
           max_decisions: params.maxDecisions,
+          ai_model: params.aiModel,
+          ai_provider: params.aiProvider,
         }),
       });
 
@@ -175,14 +207,22 @@ export default function BacktestPage() {
           hold_signals: responseData.statistics.hold_signals,
           average_confidence: responseData.statistics.average_confidence,
         },
-        decisions: responseData.decisions.map((decision: any) => ({
-          timestamp: decision.timestamp,
-          price: decision.price,
-          ai_decision: decision.ai_decision,
-          confidence: decision.confidence,
-          reasoning: decision.reasoning,
-          analysis_efficiency: decision.analysis_efficiency,
-        })),
+        decisions: responseData.decisions.map((decision: any) => {
+          console.log('Decision data from API:', {
+            timestamp: decision.timestamp,
+            detailed_analysis: decision.detailed_analysis,
+            hasDetailedAnalysis: !!decision.detailed_analysis
+          });
+          return {
+            timestamp: decision.timestamp,
+            price: decision.price,
+            ai_decision: decision.ai_decision,
+            confidence: decision.confidence,
+            reasoning: decision.reasoning,
+            analysis_efficiency: decision.analysis_efficiency,
+            detailed_analysis: decision.detailed_analysis, // 詳細分析データを含める
+          };
+        }),
       };
       
       setProgress({
