@@ -77,6 +77,17 @@ build/
 backend/test_*.py
 **/test_temp_*.py
 
+# AI analysis results and test scripts
+backend/*_analysis_*.json
+backend/ai_decision_result_*.json
+backend/gemini_analysis_*.json
+backend/gemini_complete_analysis_*.json
+backend/gemini_test_script.py
+
+# AI provider cache and temporary files
+backend/output/
+backend/charts/
+
 # MacOS
 .DS_Store
 .AppleDouble
