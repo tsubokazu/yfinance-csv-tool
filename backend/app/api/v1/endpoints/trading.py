@@ -227,6 +227,8 @@ class BacktestRequest(BaseModel):
     end_time: datetime
     interval_minutes: int = 5
     max_decisions: int = 20
+    ai_provider: str = "gemini"  # "openai" または "gemini"
+    ai_model: Optional[str] = None  # 未指定の場合はデフォルトモデル
 
 @router.post("/ai-backtest")
 async def run_ai_backtest(
@@ -239,46 +241,70 @@ async def run_ai_backtest(
     try:
         logger.info(f"AI バックテスト開始: {request.symbol} {request.start_time} - {request.end_time} (User: {current_user['email']})")
         
-        # AI判断エンジンの初期化
+        # AI判断エンジンの初期化（プロバイダー指定）
         from app.services.ai.ai_trading_decision import AITradingDecisionEngine
-        ai_engine = AITradingDecisionEngine()
+        
+        # AIモデルの决定（Geminiの場合は2.5 Flashを使用）
+        ai_model = request.ai_model
+        if request.ai_provider == "gemini" and not ai_model:
+            ai_model = "gemini-2.5-flash"
+        
+        logger.info(f"🤖 AIプロバイダー選択: {request.ai_provider} (Model: {ai_model or 'デフォルト'})")
+        ai_engine = AITradingDecisionEngine(
+            ai_provider=request.ai_provider,
+            ai_model=ai_model
+        )
         
         # 指定期間内の取引時間のみでタイムラインを生成
         timeline = []
         current_date = request.start_time.date()
         end_date = request.end_time.date()
         
+        # タイムゾーン対応：フロントエンドからのJST時刻を適切に処理
+        import pytz
+        jst = pytz.timezone('Asia/Tokyo')
+        
+        # フロントエンドから送信された時刻をJSTとして解釈
+        start_jst = jst.localize(request.start_time.replace(tzinfo=None))
+        end_jst = jst.localize(request.end_time.replace(tzinfo=None))
+        
+        logger.info(f"タイムゾーン変換: UTC {request.start_time} - {request.end_time} → JST {start_jst} - {end_jst}")
+        
+        current_date = start_jst.date()
+        end_date = end_jst.date()
+        
         while current_date <= end_date:
             # 平日のみ処理
             if current_date.weekday() < 5:  # 0=月曜日, 6=日曜日
                 # その日の9:00から15:00まで、指定間隔で時刻を生成
-                market_start = datetime.combine(current_date, datetime.min.time().replace(hour=9, minute=0))
-                market_end = datetime.combine(current_date, datetime.min.time().replace(hour=15, minute=0))
+                market_start = jst.localize(datetime.combine(current_date, datetime.min.time().replace(hour=9, minute=0)))
+                market_end = jst.localize(datetime.combine(current_date, datetime.min.time().replace(hour=15, minute=0)))
                 
                 # 指定された期間内の場合のみ追加
-                if market_start.date() == request.start_time.date():
+                if market_start.date() == start_jst.date():
                     # 開始日の場合、開始時刻を考慮
-                    if request.start_time.time() > market_start.time():
-                        if request.start_time.time() <= market_end.time():
-                            market_start = request.start_time.replace(second=0, microsecond=0)
+                    if start_jst.time() > market_start.time():
+                        if start_jst.time() <= market_end.time():
+                            market_start = start_jst.replace(second=0, microsecond=0)
                         else:
                             # 開始時刻が15:00を超えている場合はスキップ
                             current_date += timedelta(days=1)
                             continue
                 
-                if market_end.date() == request.end_time.date():
+                if market_end.date() == end_jst.date():
                     # 終了日の場合、終了時刻を考慮
-                    if request.end_time.time() < market_start.time():
+                    if end_jst.time() < market_start.time():
                         # 終了時刻が9:00より前の場合はスキップ
                         current_date += timedelta(days=1)
                         continue
-                    elif request.end_time.time() < market_end.time():
-                        market_end = request.end_time.replace(second=0, microsecond=0)
+                    elif end_jst.time() < market_end.time():
+                        market_end = end_jst.replace(second=0, microsecond=0)
                 
                 # 市場時間内で指定間隔ごとにタイムスタンプを生成
                 current_time = market_start
                 while current_time <= market_end:
-                    timeline.append(current_time)
+                    # JSTをUTCに戻してtimelineに追加（システム内部はUTC統一）
+                    timeline.append(current_time.astimezone(pytz.UTC).replace(tzinfo=None))
                     current_time += timedelta(minutes=request.interval_minutes)
             
             current_date += timedelta(days=1)
@@ -298,19 +324,62 @@ async def run_ai_backtest(
                 decision_package = trading_engine.get_minute_decision_data(request.symbol, timestamp)
                 ai_result = ai_engine.analyze_trading_decision(decision_package, force_full_analysis=True)
                 
+                # AI分析結果をデバッグログで出力
+                logger.debug(f"AI分析結果 ({timestamp}): {list(ai_result.keys())}")
+                if "chart_analysis" in ai_result:
+                    logger.debug(f"チャート分析結果: {ai_result['chart_analysis']}")
+                if "technical_analysis" in ai_result:
+                    logger.debug(f"テクニカル分析結果: {ai_result['technical_analysis']}")
+                
+                # 詳細分析情報を抽出（バックテスト強制実行時は利用可能）
+                detailed_analysis = {}
+                
+                # チャート分析結果
+                chart_analysis = ai_result.get("chart_analysis", {})
+                if chart_analysis and not chart_analysis.get("error"):
+                    detailed_analysis["chart_analysis"] = {
+                        "decision": chart_analysis.get("decision", "HOLD"),  # 実際のLLM分析結果を使用
+                        "confidence": chart_analysis.get("confidence_score", 0.5),
+                        "reasoning": [chart_analysis.get("analysis_summary", "チャート分析実行")[:100]]
+                    }
+                
+                # テクニカル分析結果
+                technical_analysis = ai_result.get("technical_analysis", {})
+                if technical_analysis and not technical_analysis.get("error"):
+                    detailed_analysis["technical_analysis"] = {
+                        "decision": technical_analysis.get("overall_signal", "HOLD").upper(),
+                        "confidence": technical_analysis.get("signal_strength", 0.5),
+                        "reasoning": [technical_analysis.get("analysis_summary", "テクニカル分析実行")[:100]]
+                    }
+                
+                # 統合分析結果（最終判断）
+                integrated_decision = ai_result.get("final_decision") or ai_result.get("trading_decision")
+                if integrated_decision:
+                    detailed_analysis["integrated_analysis"] = {
+                        "decision": integrated_decision,
+                        "confidence": ai_result.get("confidence_level", ai_result.get("confidence_score", 0.5)),
+                        "reasoning": ai_result.get("reasoning", ai_result.get("reasons", ["統合分析実行"]))[:2]
+                    }
+                
                 # 結果を記録（バックテスト用詳細情報付き）
-                decisions.append({
+                decision_data = {
                     "timestamp": timestamp.isoformat(),
                     "price": decision_package.current_price.current_price,
                     "ai_decision": ai_result.get("final_decision", ai_result.get("trading_decision", "HOLD")),
                     "confidence": ai_result.get("confidence_level", ai_result.get("confidence", 0.5)),
-                    "reasoning": ai_result.get("reasoning", ai_result.get("reasons", ["分析結果なし"]))[:3],  # 詳細理由3つまで
+                    "reasoning": ai_result.get("reasoning", ai_result.get("reasons", ["分析結果なし"]))[:3],
                     "analysis_efficiency": ai_result.get("analysis_efficiency", "forced_full_analysis"),
                     "strategy_used": ai_result.get("strategy_used", "unknown"), 
-                    "risk_factors": ai_result.get("risk_factors", [])[:2],  # リスク要因2つまで
+                    "risk_factors": ai_result.get("risk_factors", [])[:2],
                     "market_outlook": ai_result.get("market_outlook", {}),
                     "trigger_reason": ai_result.get("trigger_reason", "backtest_forced")
-                })
+                }
+                
+                # 詳細分析がある場合のみ追加
+                if detailed_analysis:
+                    decision_data["detailed_analysis"] = detailed_analysis
+                
+                decisions.append(decision_data)
                 
                 # プログレス情報
                 if (i + 1) % 5 == 0:

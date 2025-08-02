@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     # Sentry
     SENTRY_DSN: Optional[str] = Field(default=None, env="SENTRY_DSN")
     
+    # AI Provider API Keys
+    GEMINI_API_KEY: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
+    
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = Field(default=60, env="RATE_LIMIT_PER_MINUTE")
     
