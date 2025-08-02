@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # データソースルーターのインスタンス
 data_router = DataSourceRouter()
 # 従来のトレーディングエンジン（後方互換性）
-trading_engine = MinuteDecisionEngine()
+trading_engine = MinuteDecisionEngine(enable_chart_generation=True)
 
 class TradingDecisionRequest(BaseModel):
     """
@@ -294,18 +294,22 @@ async def run_ai_backtest(
         
         for i, timestamp in enumerate(timeline):
             try:
-                # データ取得とAI判断
+                # データ取得とAI判断（バックテスト時は強制詳細分析）
                 decision_package = trading_engine.get_minute_decision_data(request.symbol, timestamp)
-                ai_result = ai_engine.analyze_trading_decision(decision_package)
+                ai_result = ai_engine.analyze_trading_decision(decision_package, force_full_analysis=True)
                 
-                # 結果を記録
+                # 結果を記録（バックテスト用詳細情報付き）
                 decisions.append({
                     "timestamp": timestamp.isoformat(),
                     "price": decision_package.current_price.current_price,
-                    "ai_decision": ai_result.get("final_decision", "HOLD"),
-                    "confidence": ai_result.get("confidence_level", 0.5),
-                    "reasoning": ai_result.get("reasoning", [])[:2],  # 最初の2つの理由のみ
-                    "analysis_efficiency": ai_result.get("analysis_efficiency", "full_analysis")
+                    "ai_decision": ai_result.get("final_decision", ai_result.get("trading_decision", "HOLD")),
+                    "confidence": ai_result.get("confidence_level", ai_result.get("confidence", 0.5)),
+                    "reasoning": ai_result.get("reasoning", ai_result.get("reasons", ["分析結果なし"]))[:3],  # 詳細理由3つまで
+                    "analysis_efficiency": ai_result.get("analysis_efficiency", "forced_full_analysis"),
+                    "strategy_used": ai_result.get("strategy_used", "unknown"), 
+                    "risk_factors": ai_result.get("risk_factors", [])[:2],  # リスク要因2つまで
+                    "market_outlook": ai_result.get("market_outlook", {}),
+                    "trigger_reason": ai_result.get("trigger_reason", "backtest_forced")
                 })
                 
                 # プログレス情報

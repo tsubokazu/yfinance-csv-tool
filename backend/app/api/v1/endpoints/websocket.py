@@ -6,7 +6,7 @@ import json
 import asyncio
 import logging
 from typing import Dict, Any, List, Optional, Set
-from datetime import datetime
+from datetime import datetime, time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from fastapi.websockets import WebSocketState
 
@@ -15,6 +15,30 @@ from app.core.auth import get_current_user_from_token
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+def is_trading_hours(now: datetime = None) -> bool:
+    """
+    日本株取引時間判定（平日9:00-15:00）
+    
+    Args:
+        now: 判定する時刻（Noneの場合は現在時刻）
+    
+    Returns:
+        bool: 取引時間内の場合True
+    """
+    if now is None:
+        now = datetime.now()
+    
+    # 平日チェック（月曜=0, 日曜=6）
+    if now.weekday() >= 5:  # 土日
+        return False
+    
+    # 取引時間チェック（9:00-15:00）
+    trading_start = time(9, 0)
+    trading_end = time(15, 0)
+    current_time = now.time()
+    
+    return trading_start <= current_time <= trading_end
 
 class ConnectionManager:
     """WebSocket接続管理クラス"""
@@ -213,6 +237,23 @@ class ConnectionManager:
         
         try:
             while self.streaming_symbols and self.active_connections:
+                # 取引時間チェック
+                if not is_trading_hours():
+                    # 取引時間外の場合は市場休止メッセージを配信
+                    for symbol in self.streaming_symbols.copy():
+                        market_closed_data = {
+                            "type": "market_closed",
+                            "symbol": symbol,
+                            "timestamp": datetime.now().isoformat(),
+                            "message": "市場時間外（平日9:00-15:00のみライブ配信）",
+                            "source": "market_status"
+                        }
+                        await self.broadcast_to_symbol(symbol, market_closed_data)
+                    
+                    # 取引時間外は60秒間隔でチェック
+                    await asyncio.sleep(60.0)
+                    continue
+                
                 # 各シンボルの価格を取得して配信
                 for symbol in self.streaming_symbols.copy():
                     try:
@@ -227,7 +268,7 @@ class ConnectionManager:
                             "current_price": price_data.current_price,
                             "price_change": price_data.price_change,
                             "price_change_percent": price_data.price_change_percent,
-                            "volume": price_data.volume,
+                            "volume": price_data.current_volume,
                             "source": "live_stream"
                         }
                         
