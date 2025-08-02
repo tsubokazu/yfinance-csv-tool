@@ -403,9 +403,12 @@ class MinuteDecisionEngine:
             # 優先順位: 1分足 → 5分足 → 15分足 → 60分足 → 日足
             timeframes = ['minute_1', 'minute_5', 'minute_15', 'hourly_60', 'daily']
             
+            logger.debug(f"価格データ取得開始: {symbol} @ {timestamp}")
+            
             for timeframe in timeframes:
                 data = timeframe_data.get(timeframe, pd.DataFrame())
                 if data.empty:
+                    logger.debug(f"データなし: {timeframe}")
                     continue
                 
                 # インデックスをdatetimeに変換
@@ -427,18 +430,23 @@ class MinuteDecisionEngine:
                     if timestamp.tzinfo is not None:
                         timestamp = timestamp.replace(tzinfo=None)
                 
+                logger.debug(f"時間軸: {timeframe}, データ期間: {data.index[0]} ～ {data.index[-1]}, 対象時刻: {timestamp}")
+                
                 # 指定時刻以前の最も近いデータを取得
                 before_timestamp = data.index <= timestamp
                 if before_timestamp.any():
                     matching_data = data[before_timestamp].iloc[-1]
+                    matching_timestamp = data[before_timestamp].index[-1]
                     
                     # バックテスト用価格選択ロジック
                     # 市場時間中であれば、より実際の取引に近い価格を使用
                     price = self._select_backtest_price(matching_data, timestamp)
                     volume = int(matching_data['Volume']) if not pd.isna(matching_data['Volume']) else 0
                     
-                    logger.debug(f"価格取得成功: {symbol} {timestamp} -> {timeframe} Price={price}")
+                    logger.debug(f"価格取得成功: {symbol} {timestamp} -> {timeframe} 対象データ時刻={matching_timestamp}, Price={price}, OHLC=[{matching_data['Open']:.1f}, {matching_data['High']:.1f}, {matching_data['Low']:.1f}, {matching_data['Close']:.1f}]")
                     return price, volume
+                else:
+                    logger.debug(f"指定時刻以前のデータなし: {timeframe}")
             
             # どの時間軸でもデータが見つからない場合は最新の日足Closeを使用
             daily_data = timeframe_data.get('daily', pd.DataFrame())

@@ -121,7 +121,8 @@ class AITradingDecisionEngine:
     
     def analyze_trading_decision(
         self, 
-        decision_package: MinuteDecisionPackage
+        decision_package: MinuteDecisionPackage,
+        force_full_analysis: bool = False
     ) -> Dict[str, Any]:
         """
         トレーディング判断分析を実行
@@ -138,20 +139,33 @@ class AITradingDecisionEngine:
             
             logger.info(f"🎯 AI売買判断開始: {symbol} @ {current_time}")
             
-            # 効率化分析プランを取得
-            analysis_plan = self.continuity_engine.get_incremental_analysis_plan(symbol, current_time)
+            # 効率化分析プランを取得（バックテスト時はキャッシュ無効化）
+            if force_full_analysis:
+                # バックテスト時はキャッシュを無効化して全時間軸を強制更新
+                logger.info("🚫 バックテスト時キャッシュクリア: 全時間軸を強制分析")
+                analysis_plan = {
+                    "analysis_type": "forced_full_analysis",
+                    "timeframes_to_update": ["weekly", "daily", "hourly_60", "minute_15", "minute_5", "minute_1"],
+                    "trading_state": None
+                }
+            else:
+                analysis_plan = self.continuity_engine.get_incremental_analysis_plan(symbol, current_time)
             
             logger.info(f"📋 分析プラン: {analysis_plan['analysis_type']} (更新対象: {len(analysis_plan['timeframes_to_update'])}時間軸)")
             
-            # 継続性分析を実行
-            continuity_result = self.continuity_engine.execute_incremental_analysis(
-                analysis_plan,
-                decision_package.current_price.current_price,
-                self._prepare_market_context(decision_package)
-            )
+            # 継続性分析を実行（バックテスト時は強制フル分析）
+            if force_full_analysis:
+                # バックテスト時は継続性判断を無効化し、常にフル分析を実行
+                continuity_result = {"requires_full_analysis": True, "trigger_reason": "backtest_forced"}
+            else:
+                continuity_result = self.continuity_engine.execute_incremental_analysis(
+                    analysis_plan,
+                    decision_package.current_price.current_price,
+                    self._prepare_market_context(decision_package)
+                )
             
-            # フル分析が不要な場合は継続結果を返す
-            if not continuity_result.get("requires_full_analysis", False):
+            # フル分析が不要な場合は継続結果を返す（バックテスト時は強制実行）
+            if not continuity_result.get("requires_full_analysis", False) and not force_full_analysis:
                 logger.info("♻️ 継続判断を採用、フル分析をスキップ")
                 
                 final_decision = continuity_result.get("decision_continuation", {})
@@ -175,10 +189,13 @@ class AITradingDecisionEngine:
                 return final_decision
             
             # フル分析が必要な場合は従来のワークフローを実行
-            logger.info("🔍 フル分析を実行...")
+            if force_full_analysis:
+                logger.info("🔍 バックテスト強制分析モード: フル分析を実行")
+            else:
+                logger.info("🔍 フル分析を実行...")
             
-            # 入力データの準備
-            initial_state = self._prepare_initial_state(decision_package)
+            # 入力データの準備（バックテスト時はキャッシュ無効化）
+            initial_state = self._prepare_initial_state(decision_package, disable_cache=force_full_analysis)
             
             # ワークフロー実行
             result = self._workflow.invoke(initial_state)
@@ -218,7 +235,7 @@ class AITradingDecisionEngine:
             logger.error(f"❌ AI売買判断エラー: {e}")
             return self._create_error_response(str(e), decision_package)
     
-    def _prepare_initial_state(self, decision_package: MinuteDecisionPackage) -> Dict[str, Any]:
+    def _prepare_initial_state(self, decision_package: MinuteDecisionPackage, disable_cache: bool = False) -> Dict[str, Any]:
         """
         ワークフロー初期状態を準備
         
@@ -392,7 +409,7 @@ class AITradingDecisionEngine:
             initial_state: ワークフロー初期状態
         """
         try:
-            from trading_tools import _generate_future_entry_conditions, _analyze_market_outlook
+            from app.services.ai.trading_tools import _generate_future_entry_conditions, _analyze_market_outlook
             
             # 必要なデータの取得
             technical_analysis = initial_state.get("technical_indicators", {})

@@ -14,7 +14,8 @@ from typing import Dict, Any, List, Literal
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_openai import ChatOpenAI
+from .ai_provider_factory import get_ai_provider
+from .providers.base import AIProviderBase
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
@@ -29,19 +30,13 @@ from app.services.ai.trading_tools import (
 
 logger = logging.getLogger(__name__)
 
-# OpenAI APIキーの設定と確認
-openai_api_key = os.getenv("OPENAI_API_KEY")
-
-if not openai_api_key or openai_api_key.startswith("your-"):
-    logger.warning("OPENAI_API_KEY not properly configured")
-
-# OpenAI GPT-4 LLMモデルの初期化
-llm = ChatOpenAI(
-    api_key=openai_api_key,
-    model="gpt-4o",
-    temperature=0.1,  # 一貫性のある分析のため低温度設定
-    max_tokens=4000
-)
+# マルチAI対応 LLMプロバイダーの初期化
+try:
+    llm_provider: AIProviderBase = get_ai_provider()
+    logger.info(f"AI プロバイダー初期化完了: {llm_provider.provider_name} - {llm_provider.model}")
+except Exception as e:
+    logger.error(f"AI プロバイダー初期化エラー: {e}")
+    llm_provider = None
 
 
 def create_chart_analyst_agent():
@@ -50,48 +45,35 @@ def create_chart_analyst_agent():
     
     チャート画像を分析し、テクニカルパターンを特定する専門家
     """
-    chart_analyst_tools = [
-        analyze_chart_image,
-        extract_technical_patterns
-    ]
+    # 簡易版: LangGraphエージェントではなく直接プロバイダーを使用
+    if llm_provider is None:
+        raise RuntimeError("AIプロバイダーが初期化されていません")
     
-    chart_analyst_prompt = """
-あなたは株式チャート分析の専門家です。
+    # シンプルなAI分析関数を返す
+    def analyze_charts(chart_data, technical_data):
+        try:
+            prompt = f"""
+あなたは株式チャート分析の専門家です。以下のデータを分析してください：
 
-## 役割
-- チャート画像を詳細に分析し、テクニカルパターンを特定
-- 複数時間軸のチャートから統合的な分析を実施
-- サポート・レジスタンスライン、トレンドラインを識別
-- 出来高パターンと価格動向の関係を分析
+チャートデータ: {chart_data}
+テクニカルデータ: {technical_data}
 
-## 分析方針
-1. **パターン認識**: 三角持合い、ダブルトップ/ボトム、ヘッドアンドショルダー等
-2. **トレンド分析**: 長期・中期・短期トレンドの方向性と強度
-3. **重要レベル**: サポート・レジスタンスの信頼性と有効性
-4. **出来高確認**: 価格動向を裏付ける出来高の動き
-5. **ブレイクアウト**: パターンブレイクアウトの可能性と方向性
-
-## 出力要件
-- 客観的で具体的な分析結果を提供
-- 各パターンの信頼度を0-1で評価
-- 複数時間軸の整合性を確認
-- 明確な根拠とともに判断を説明
-
-## 重要な注意点
-- チャート画像の詳細を正確に読み取る
-- 主観的な判断より客観的なパターンを重視
-- 不確実な要素は明確に「不明」として記録
-- 次のテクニカル分析エージェントに有用な情報を提供
-
-分析完了後は「technical_analyst」に結果を渡してください。
+分析結果をJSON形式で返してください：
+{{
+  "trend_analysis": "トレンド分析",
+  "pattern_recognition": "パターン認識結果",
+  "support_resistance": "サポート・レジスタンス",
+  "confidence": 0.7
+}}
 """
+            
+            messages = [{"role": "user", "content": prompt}]
+            response = llm_provider.invoke(messages)
+            return response.content
+        except Exception as e:
+            return f"チャート分析エラー: {e}"
     
-    return create_react_agent(
-        llm,
-        tools=chart_analyst_tools,
-        prompt=chart_analyst_prompt,
-        name="chart_analyst"
-    )
+    return analyze_charts
 
 
 def create_technical_analyst_agent():
@@ -143,6 +125,13 @@ def create_technical_analyst_agent():
 
 分析完了後は「trading_decision」エージェントに結果を渡してください。
 """
+    
+    from .langchain_adapter import create_langchain_llm
+    
+    if llm_provider is None:
+        raise RuntimeError("AIプロバイダーが初期化されていません")
+    
+    llm = create_langchain_llm(llm_provider)
     
     return create_react_agent(
         llm,
@@ -217,6 +206,13 @@ def create_trading_decision_agent():
 これが最終判断となります。慎重かつ論理的に分析してください。
 """
     
+    from .langchain_adapter import create_langchain_llm
+    
+    if llm_provider is None:
+        raise RuntimeError("AIプロバイダーが初期化されていません")
+    
+    llm = create_langchain_llm(llm_provider)
+    
     return create_react_agent(
         llm,
         tools=trading_decision_tools,
@@ -248,25 +244,32 @@ def chart_analyst_node(state: Dict[str, Any]) -> Command[Literal["technical_anal
         timestamp = state.get("timestamp", datetime.now().isoformat())
         
         if not chart_images:
-            logger.warning("チャート画像データが見つかりません")
-            error_result = {
-                "error": "チャート画像データが提供されていません",
-                "timestamp": timestamp
+            logger.info("📈 チャート画像なしでテクニカル分析のみ実行")
+            # チャート画像がない場合でもテクニカル分析は実行
+            fallback_result = {
+                "timestamp": timestamp,
+                "current_price": current_price,
+                "analyzed_timeframes": [],
+                "analysis_summary": "チャート画像データなし - テクニカル指標による分析のみ実行",
+                "patterns_identified": False,
+                "confidence_score": 0.3  # 信頼度を下げる
             }
             return Command(
                 update={
-                    "chart_analysis_result": error_result,
+                    "chart_analysis_result": fallback_result,
                     "messages": state.get("messages", []) + [
-                        AIMessage(content="チャート画像が見つからないため分析をスキップします", name="chart_analyst")
+                        AIMessage(content="チャート画像データがないため、テクニカル指標のみで分析を継続します", name="chart_analyst")
                     ]
                 },
                 goto="technical_analyst"
             )
         
         # チャート分析実行
-        input_data = {
-            "messages": state.get("messages", []) + [
-                HumanMessage(content=f"""
+        # 画像データを含むメッセージを構築
+        content_parts = [
+            {
+                "type": "text",
+                "text": f"""
 チャート画像分析を実行してください。
 
 ## 分析対象
@@ -277,7 +280,42 @@ def chart_analyst_node(state: Dict[str, Any]) -> Command[Literal["technical_anal
 {_format_chart_images_for_analysis(chart_images)}
 
 各時間軸のチャート画像を分析し、テクニカルパターンを特定してください。
-""")
+"""
+            }
+        ]
+        
+        # 各チャート画像をメッセージに追加
+        for timeframe, image_info in chart_images.items():
+            image_path = ""
+            if isinstance(image_info, dict):
+                image_path = image_info.get('imagePath', '')
+            else:
+                image_path = str(image_info)
+            
+            if image_path and os.path.exists(image_path):
+                try:
+                    # Base64エンコードした画像データを追加
+                    import base64
+                    with open(image_path, "rb") as img_file:
+                        encoded_image = base64.b64encode(img_file.read()).decode('utf-8')
+                    
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{encoded_image}",
+                            "detail": "high"
+                        }
+                    })
+                    content_parts.append({
+                        "type": "text", 
+                        "text": f"上記画像: {timeframe}チャート"
+                    })
+                except Exception as e:
+                    logger.warning(f"画像読み込みエラー {timeframe}: {e}")
+        
+        input_data = {
+            "messages": state.get("messages", []) + [
+                HumanMessage(content=content_parts)
             ]
         }
         
@@ -524,9 +562,31 @@ def trading_decision_node(state: Dict[str, Any]) -> Command[Literal["__end__"]]:
 
 def _format_chart_images_for_analysis(chart_images: Dict[str, str]) -> str:
     """チャート画像情報を分析用にフォーマット"""
+    if not chart_images:
+        return "チャート画像データが利用できません。"
+    
     formatted = []
-    for timeframe, image_path in chart_images.items():
-        formatted.append(f"- {timeframe}: {image_path}")
+    for timeframe, image_info in chart_images.items():
+        # ChartImagesの形式をサポート (imagePath, timeRange, lastUpdateを含む)
+        if isinstance(image_info, dict):
+            image_path = image_info.get('imagePath', '')
+            time_range = image_info.get('timeRange', '')
+            if image_path:
+                import os
+                if os.path.exists(image_path):
+                    formatted.append(f"- {timeframe}: {image_path} ({time_range}) ✓")
+                else:
+                    formatted.append(f"- {timeframe}: {image_path} ({time_range}) ❌ ファイル不存在")
+            else:
+                formatted.append(f"- {timeframe}: パスが取得できません")
+        else:
+            # 文字列形式の場合（legacy）
+            import os
+            if os.path.exists(str(image_info)):
+                formatted.append(f"- {timeframe}: {image_info} ✓")
+            else:
+                formatted.append(f"- {timeframe}: {image_info} ❌ ファイル不存在")
+    
     return "\n".join(formatted)
 
 

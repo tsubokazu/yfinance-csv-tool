@@ -8,7 +8,8 @@
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from langchain_openai import ChatOpenAI
+from ..ai.ai_provider_factory import get_ai_provider
+from ..ai.langchain_adapter import create_langchain_llm
 from langchain_core.messages import HumanMessage
 import os
 
@@ -22,15 +23,14 @@ class TimeframeChartAnalyzer:
     """
     
     def __init__(self):
-        # OpenAI GPT-4o設定
-        openai_api_key = os.getenv('OPENAI_API_KEY', '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')
-        
-        self.llm = ChatOpenAI(
-            api_key=openai_api_key,
-            model="gpt-4o",
-            temperature=0.1,
-            max_tokens=2000  # コンテキスト節約のため削減
-        )
+        # マルチAI対応プロバイダー設定
+        try:
+            ai_provider = get_ai_provider()
+            self.llm = create_langchain_llm(ai_provider)
+            logger.info(f"TimeframeChartAnalyzer: {ai_provider.provider_name} - {ai_provider.model} で初期化")
+        except Exception as e:
+            logger.error(f"TimeframeChartAnalyzer AI初期化エラー: {e}")
+            raise RuntimeError(f"AI初期化失敗: {e}")
         
         # 時間足別分析テンプレート
         self.analysis_templates = {

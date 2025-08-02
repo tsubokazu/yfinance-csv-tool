@@ -42,20 +42,36 @@ def analyze_chart_image(chart_image_path: str, timeframe: str) -> Dict[str, Any]
                 "timeframe": timeframe,
                 "patterns": [],
                 "trend_direction": "unknown",
-                "confidence_score": 0.0
+                "confidence_score": 0.0,
+                "analysis_performed": False
             }
         
         # チャート画像の存在確認とメタデータ取得
         image_size = image_path.stat().st_size
         
-        # 実際の画像分析はLLMに委ねるため、ここではメタデータのみ返す
-        # LangGraphのエージェント内でClaude Visionが画像を直接分析
+        # Base64エンコードした画像データを読み込み
+        import base64
+        with open(image_path, "rb") as image_file:
+            encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # 画像が正常に読み込めたことを確認
+        if not encoded_image:
+            return {
+                "error": f"画像データの読み込みに失敗: {chart_image_path}",
+                "timeframe": timeframe,
+                "patterns": [],
+                "trend_direction": "unknown", 
+                "confidence_score": 0.0,
+                "analysis_performed": False
+            }
         
         analysis_result = {
             "timeframe": timeframe,
             "image_path": str(image_path),
             "image_size_bytes": image_size,
             "analysis_timestamp": datetime.now().isoformat(),
+            "image_data_available": True,
+            "encoded_image_length": len(encoded_image),
             
             # 基本的な分析フレームワーク（LLMが埋める）
             "chart_patterns": [],
@@ -64,12 +80,16 @@ def analyze_chart_image(chart_image_path: str, timeframe: str) -> Dict[str, Any]
             "trend_direction": "unknown",  # bullish/bearish/sideways
             "volume_pattern": "unknown",   # increasing/decreasing/stable
             "confidence_score": 0.0,
+            "analysis_performed": True,
             
             # 時間軸別の重点分析項目
-            "analysis_focus": _get_analysis_focus_for_timeframe(timeframe)
+            "analysis_focus": _get_analysis_focus_for_timeframe(timeframe),
+            
+            # 実際の画像データ（base64エンコード済み）
+            "image_data": f"data:image/png;base64,{encoded_image}"
         }
         
-        logger.info(f"チャート画像分析準備完了: {timeframe} - {image_path}")
+        logger.info(f"チャート画像分析準備完了: {timeframe} - {image_path} ({image_size} bytes)")
         return analysis_result
         
     except Exception as e:
@@ -79,7 +99,8 @@ def analyze_chart_image(chart_image_path: str, timeframe: str) -> Dict[str, Any]
             "timeframe": timeframe,
             "patterns": [],
             "trend_direction": "unknown",
-            "confidence_score": 0.0
+            "confidence_score": 0.0,
+            "analysis_performed": False
         }
 
 
